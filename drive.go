@@ -1634,8 +1634,8 @@ func (ds *DriveService) compareFolders(sourceFolderID, targetFolderID string) (*
 	
 	if len(targetFiles) > 0 {
 		duplicationPercentage = float64(len(duplicatesInTarget)) / float64(len(targetFiles)) * 100
-		// 95% 이상 중복이면 폴더 전체 삭제 권장
-		canDeleteTargetFolder = duplicationPercentage >= 95.0
+		// 100% 중복이면 폴더 전체 삭제 권장
+		canDeleteTargetFolder = duplicationPercentage >= 100.0
 		
 		if canDeleteTargetFolder {
 			log.Printf("🎯 폴더 전체 삭제 권장: 대상 폴더의 %.1f%% (%d/%d)가 중복됨", 

@@ -852,7 +852,7 @@ function confirmDeleteTargetFolder(folderId, folderName) {
                       `⚠️ 경고:\n` +
                       `• 폴더의 모든 파일과 하위 폴더가 영구적으로 삭제됩니다\n` +
                       `• 이 작업은 되돌릴 수 없습니다\n` +
-                      `• 95% 이상이 중복 파일이므로 폴더 전체 삭제를 권장합니다\n\n` +
+                      `• 100% 모든 파일이 중복이므로 폴더 전체 삭제를 권장합니다\n\n` +
                       `계속하시겠습니까?`;
     
     if (!confirm(confirmMsg)) {
