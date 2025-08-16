@@ -29,24 +29,110 @@
             <button class="scan-button" onclick="updateParents()" id="updateParentsBtn" style="background: #9C27B0;">
                 📁 경로 정보 업데이트
             </button>
+            <button class="scan-button" onclick="cleanupDeletedFiles()" id="cleanupBtn" style="background: #FF5722;">
+                🧹 삭제된 파일 정리
+            </button>
+            <button class="scan-button" onclick="cleanupEmptyFolders()" id="cleanupFoldersBtn" style="background: #795548;">
+                📂 빈 폴더 정리
+            </button>
         </div>
         
         <div class="settings-panel">
             <h3>⚙️ 성능 설정</h3>
+            
+            <!-- 중복 파일 검사용 설정 -->
             <div class="setting-item">
-                <div class="setting-label">병렬 작업 개수:</div>
+                <div class="setting-label">병렬 작업 개수 (중복 파일 검사):</div>
                 <div class="setting-controls">
                     <span>1</span>
-                    <input type="range" id="workerSlider" class="worker-slider" min="1" max="20" value="3">
+                    <input type="range" id="duplicateWorkerSlider" class="worker-slider" min="1" max="20" value="3">
                     <span>20</span>
-                    <div class="worker-value" id="workerValue">3</div>
-                    <button class="apply-btn" id="applyBtn" onclick="applyWorkerSettings()">적용</button>
-                    <div class="recommended-badge" id="recommendedBadge" style="display: none;">권장</div>
+                    <div class="worker-value" id="duplicateWorkerValue">3</div>
+                    <button class="apply-btn" id="applyDuplicateBtn" onclick="applyDuplicateWorkerSettings()">적용</button>
+                    <div class="recommended-badge" id="duplicateRecommendedBadge" style="display: none;">권장</div>
                 </div>
             </div>
+            
+            <!-- 해시 계산용 설정 -->
+            <div class="setting-item" style="margin-top: 15px;">
+                <div class="setting-label">병렬 작업 개수 (해시 계산 워커):</div>
+                <div class="setting-controls">
+                    <div class="worker-counter">
+                        <button type="button" id="workerDecreaseBtn" onclick="decreaseWorkers()" 
+                                style="width: 30px; height: 30px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; border-radius: 3px;">−</button>
+                        <div class="worker-value" id="workerValue" style="margin: 0 15px; font-size: 18px; font-weight: bold; min-width: 30px; text-align: center;">5</div>
+                        <button type="button" id="workerIncreaseBtn" onclick="increaseWorkers()" 
+                                style="width: 30px; height: 30px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; border-radius: 3px;">+</button>
+                    </div>
+                    <input type="range" id="workerSlider" class="worker-slider" min="1" max="20" value="5" 
+                           style="margin: 0 15px; width: 150px;" oninput="updateWorkerValue(this.value)">
+                    <button class="apply-btn" id="applyBtn" onclick="applyWorkerSettings()" 
+                            style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 3px; cursor: pointer;">적용</button>
+                    <div class="recommended-badge" id="recommendedBadge" style="display: none; margin-left: 10px; background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">권장</div>
+                </div>
+            </div>
+            
             <p style="color: #666; font-size: 14px; margin-top: 10px;">
-                💡 값이 클수록 빠르지만 시스템 자원을 더 많이 사용합니다. 인터넷 속도와 컴퓨터 성능에 따라 조절하세요.
+                💡 값이 클수록 빠르지만 시스템 자원을 더 많이 사용합니다. 인터넷 속도와 컴퓨터 성능에 따라 조절하세요.<br>
+                🔍 <strong>중복 파일 검사</strong>: 전체 드라이브 스캔 시 병렬 처리<br>
+                📂 <strong>해시 계산 워커</strong>: 폴더 비교 시 파일 해시 계산
             </p>
+            
+            <style>
+                .worker-counter {
+                    display: flex;
+                    align-items: center;
+                    margin-right: 15px;
+                }
+                
+                .setting-controls {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+                
+                .worker-counter button:hover {
+                    background: #e9ecef;
+                }
+                
+                .worker-counter button:disabled {
+                    background: #f8f9fa;
+                    color: #6c757d;
+                    cursor: not-allowed;
+                }
+                
+                .apply-btn {
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    padding: 8px 15px;
+                    border-radius: 3px;
+                    cursor: pointer;
+                }
+                
+                .apply-btn:hover {
+                    background: #0056b3;
+                }
+                
+                .worker-value {
+                    background: #f8f9fa;
+                    border: 1px solid #ddd;
+                    padding: 5px 10px;
+                    border-radius: 3px;
+                    min-width: 30px;
+                    text-align: center;
+                    font-weight: bold;
+                }
+                
+                .recommended-badge {
+                    background: #28a745;
+                    color: white;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    font-size: 12px;
+                }
+            </style>
         </div>
         
         <div id="progress" style="display: none;"></div>
@@ -57,8 +143,76 @@
             <div id="live-duplicates"></div>
         </div>
         
+        <div id="folder-comparison-section" class="duplicate-section">
+            <h2>📂 폴더 간 중복 파일 삭제</h2>
+            <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+                <p><strong>💡 설명:</strong> 두 폴더를 비교하여 첫 번째 폴더(기준)와 중복되는 파일들을 두 번째 폴더(대상)에서 삭제합니다.</p>
+            </div>
+            
+            <!-- 저장된 작업 불러오기 섹션 -->
+            <div id="saved-comparison-section" style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ffc107; display: none;">
+                <h4 style="margin-top: 0; margin-bottom: 10px;">🔄 저장된 폴더 비교 작업이 있습니다</h4>
+                <div id="saved-comparison-info" style="margin-bottom: 15px;">
+                    <!-- 저장된 작업 정보가 여기에 표시됩니다 -->
+                </div>
+                <div>
+                    <button onclick="loadSavedComparison()" id="loadSavedComparisonBtn" 
+                            style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
+                        🔄 저장된 작업 불러오기
+                    </button>
+                    <button onclick="clearSavedComparison()" id="clearSavedComparisonBtn" 
+                            style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
+                        🗑️ 저장된 작업 삭제
+                    </button>
+                    <button onclick="hideSavedComparisonSection()" 
+                            style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
+                        숨기기
+                    </button>
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label for="sourceFolderUrl" style="display: block; margin-bottom: 5px; font-weight: bold;">📁 기준 폴더 URL (중복 파일을 유지할 폴더):</label>
+                    <input type="text" id="sourceFolderUrl" placeholder="https://drive.google.com/drive/folders/1ABC123..." 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;">
+                    <small style="color: #666;">중복 파일을 유지할 기준 폴더의 URL</small>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label for="targetFolderUrl" style="display: block; margin-bottom: 5px; font-weight: bold;">📁 대상 폴더 URL (중복 파일을 삭제할 폴더):</label>
+                    <input type="text" id="targetFolderUrl" placeholder="https://drive.google.com/drive/folders/1DEF456..." 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;">
+                    <small style="color: #666;">중복 파일을 삭제할 대상 폴더의 URL</small>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <button onclick="compareFolders()" id="compareFoldersBtn" 
+                            style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
+                        🔍 폴더 비교 및 중복 파일 검색
+                    </button>
+                </div>
+            </div>
+            
+            <div id="comparison-preview" style="display: none;">
+                <h3>📋 비교 결과</h3>
+                <div id="comparison-summary"></div>
+                <div id="duplicates-list"></div>
+                <div style="margin-top: 20px;">
+                    <button onclick="confirmDeleteDuplicates()" id="confirmDeleteDuplicatesBtn" 
+                            style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
+                        ❌ 대상 폴더에서 중복 파일 삭제
+                    </button>
+                    <button onclick="cancelFolderComparison()" 
+                            style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="bulk-delete-section" class="duplicate-section">
-            <h2>🗑️ 일괄 파일 삭제</h2>
+            <h2>🗑️ 정규식 기반 일괄 파일 삭제</h2>
             <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
                 <p><strong>⚠️ 주의:</strong> 이 기능은 지정된 폴더의 파일들을 영구적으로 삭제합니다. 신중하게 사용하세요.</p>
             </div>

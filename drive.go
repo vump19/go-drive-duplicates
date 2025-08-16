@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -95,6 +96,52 @@ func initDB() (*sql.DB, error) {
 			last_page_token TEXT DEFAULT '',
 			last_page_count INTEGER DEFAULT 0,
 			last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("progress 테이블 생성 오류: %v", err)
+	}
+
+	// 폴더 비교 작업 테이블 생성
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS folder_comparison_tasks (
+			id INTEGER PRIMARY KEY,
+			source_folder_id TEXT NOT NULL,
+			target_folder_id TEXT NOT NULL,
+			status TEXT DEFAULT 'pending',
+			current_step TEXT DEFAULT '',
+			source_folder_scanned INTEGER DEFAULT 0,
+			source_folder_total INTEGER DEFAULT 0,
+			target_folder_scanned INTEGER DEFAULT 0,
+			target_folder_total INTEGER DEFAULT 0,
+			hashes_calculated INTEGER DEFAULT 0,
+			total_hashes_to_calc INTEGER DEFAULT 0,
+			duplicates_found INTEGER DEFAULT 0,
+			error_message TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("folder_comparison_tasks 테이블 생성 오류: %v", err)
+	}
+
+	// 폴더 비교 결과 파일 저장 테이블
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS comparison_result_files (
+			id INTEGER PRIMARY KEY,
+			task_id INTEGER NOT NULL,
+			file_id TEXT NOT NULL,
+			file_name TEXT NOT NULL,
+			file_size INTEGER NOT NULL,
+			file_hash TEXT NOT NULL,
+			file_path TEXT DEFAULT '',
+			web_view_link TEXT DEFAULT '',
+			mime_type TEXT DEFAULT '',
+			modified_time TEXT DEFAULT '',
+			is_duplicate BOOLEAN DEFAULT FALSE,
+			folder_type TEXT NOT NULL, -- 'source' or 'target'
+			FOREIGN KEY (task_id) REFERENCES folder_comparison_tasks (id)
 		)
 	`)
 	if err != nil {
@@ -288,7 +335,10 @@ func NewDriveService(ctx context.Context) (*DriveService, error) {
 	log.Println("🌐 Google Drive 서비스 연결 중...")
 	client := config.Client(ctx, token)
 	
-	service, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	// HTTP 클라이언트 최적화 (성능 향상)
+	optimizedClient := optimizeHTTPClient(client)
+	
+	service, err := drive.NewService(ctx, option.WithHTTPClient(optimizedClient))
 	if err != nil {
 		return nil, fmt.Errorf("Drive 서비스 생성 오류: %v", err)
 	}
@@ -301,6 +351,52 @@ func NewDriveService(ctx context.Context) (*DriveService, error) {
 	}
 
 	return &DriveService{service: service, db: db}, nil
+}
+
+// HTTP 클라이언트 성능 최적화
+func optimizeHTTPClient(client *http.Client) *http.Client {
+	// 기존 Transport를 복제하여 설정 유지
+	var baseTransport *http.Transport
+	if client.Transport != nil {
+		if transport, ok := client.Transport.(*http.Transport); ok {
+			baseTransport = transport.Clone()
+		} else if transport, ok := client.Transport.(*oauth2.Transport); ok {
+			if innerTransport, ok := transport.Base.(*http.Transport); ok {
+				baseTransport = innerTransport.Clone()
+			}
+		}
+	}
+	
+	// 기본 Transport 설정 (백업)
+	if baseTransport == nil {
+		baseTransport = http.DefaultTransport.(*http.Transport).Clone()
+	}
+	
+	// 기본 연결 설정 (타임아웃 제거)
+	baseTransport.MaxIdleConns = 100          // 최대 유휴 연결 수
+	baseTransport.MaxIdleConnsPerHost = 20    // 호스트당 최대 유휴 연결 수
+	baseTransport.MaxConnsPerHost = 50        // 호스트당 최대 연결 수
+	// 모든 타임아웃 설정 제거
+	
+	// 압축 활성화
+	baseTransport.DisableCompression = false
+	
+	// OAuth Transport 래핑 유지
+	var finalTransport http.RoundTripper = baseTransport
+	if oauthTransport, ok := client.Transport.(*oauth2.Transport); ok {
+		oauthTransport.Base = baseTransport
+		finalTransport = oauthTransport
+	}
+	
+	optimizedClient := &http.Client{
+		Transport: finalTransport,
+		// Timeout 제거 - 무제한 대기
+	}
+	
+	log.Printf("🚀 HTTP 클라이언트 최적화 적용: MaxConns=%d, MaxIdleConns=%d, Timeout=무제한", 
+		baseTransport.MaxConnsPerHost, baseTransport.MaxIdleConns)
+	
+	return optimizedClient
 }
 
 func getOAuthConfig() (*oauth2.Config, error) {
@@ -1066,6 +1162,741 @@ func (ds *DriveService) getAllSettings() map[string]string {
 	return settings
 }
 
+// 폴더 비교 및 중복 파일 검출 기능
+type FolderComparisonResult struct {
+	SourceFolder      string      `json:"sourceFolder"`
+	TargetFolder      string      `json:"targetFolder"`
+	SourceFiles       []*DriveFile `json:"sourceFiles"`
+	TargetFiles       []*DriveFile `json:"targetFiles"`
+	DuplicatesInTarget []*DriveFile `json:"duplicatesInTarget"`
+	TotalDuplicates   int         `json:"totalDuplicates"`
+	
+	// 폴더 삭제 권장 정보
+	CanDeleteTargetFolder  bool    `json:"canDeleteTargetFolder"`  // 대상 폴더 전체 삭제 가능 여부
+	TargetFolderName      string  `json:"targetFolderName"`       // 대상 폴더 이름
+	TargetFolderID        string  `json:"targetFolderID"`         // 대상 폴더 ID
+	DuplicationPercentage float64 `json:"duplicationPercentage"`  // 중복 비율
+}
+
+// 폴더 비교 진행 상황 추적
+type FolderComparisonProgress struct {
+	Status              string `json:"status"` // "running", "completed", "error"
+	CurrentStep         string `json:"currentStep"`
+	SourceFolderScanned int    `json:"sourceFolderScanned"`
+	SourceFolderTotal   int    `json:"sourceFolderTotal"`
+	TargetFolderScanned int    `json:"targetFolderScanned"`
+	TargetFolderTotal   int    `json:"targetFolderTotal"`
+	HashesCalculated    int    `json:"hashesCalculated"`
+	TotalHashesToCalc   int    `json:"totalHashesToCalc"`
+	DuplicatesFound     int    `json:"duplicatesFound"`
+	ErrorMessage        string `json:"errorMessage,omitempty"`
+	StartTime           time.Time `json:"startTime"`
+	LastUpdated         time.Time `json:"lastUpdated"`
+}
+
+// 폴더 비교 작업 구조체
+type FolderComparisonTask struct {
+	ID                  int    `json:"id"`
+	SourceFolderID      string `json:"sourceFolderId"`
+	TargetFolderID      string `json:"targetFolderId"`
+	Status              string `json:"status"`
+	CurrentStep         string `json:"currentStep"`
+	SourceFolderScanned int    `json:"sourceFolderScanned"`
+	SourceFolderTotal   int    `json:"sourceFolderTotal"`
+	TargetFolderScanned int    `json:"targetFolderScanned"`
+	TargetFolderTotal   int    `json:"targetFolderTotal"`
+	HashesCalculated    int    `json:"hashesCalculated"`
+	TotalHashesToCalc   int    `json:"totalHashesToCalc"`
+	DuplicatesFound     int    `json:"duplicatesFound"`
+	ErrorMessage        string `json:"errorMessage"`
+	CreatedAt           string `json:"createdAt"`
+	UpdatedAt           string `json:"updatedAt"`
+}
+
+// 전역 폴더 비교 진행 상황 (메모리에 저장)
+var (
+	currentComparisonProgress *FolderComparisonProgress
+	comparisonProgressMutex   sync.RWMutex
+	lastComparisonResult      *FolderComparisonResult
+	comparisonResultMutex     sync.RWMutex
+	currentComparisonTask     *FolderComparisonTask
+	currentTaskMutex          sync.RWMutex
+)
+
+// 폴더 비교 진행 상황 업데이트 함수들
+func updateComparisonProgress(update func(*FolderComparisonProgress)) {
+	comparisonProgressMutex.Lock()
+	defer comparisonProgressMutex.Unlock()
+	
+	if currentComparisonProgress != nil {
+		update(currentComparisonProgress)
+		currentComparisonProgress.LastUpdated = time.Now()
+	}
+}
+
+func initComparisonProgress(sourceFolderID, targetFolderID string) {
+	comparisonProgressMutex.Lock()
+	defer comparisonProgressMutex.Unlock()
+	
+	currentComparisonProgress = &FolderComparisonProgress{
+		Status:      "running",
+		CurrentStep: "초기화 중...",
+		StartTime:   time.Now(),
+		LastUpdated: time.Now(),
+	}
+}
+
+func getComparisonProgress() *FolderComparisonProgress {
+	comparisonProgressMutex.RLock()
+	defer comparisonProgressMutex.RUnlock()
+	
+	if currentComparisonProgress == nil {
+		return nil
+	}
+	
+	// 복사본 반환 (동시성 안전)
+	progress := *currentComparisonProgress
+	return &progress
+}
+
+func saveComparisonResult(result *FolderComparisonResult) {
+	comparisonResultMutex.Lock()
+	defer comparisonResultMutex.Unlock()
+	
+	lastComparisonResult = result
+}
+
+func getComparisonResult() *FolderComparisonResult {
+	comparisonResultMutex.RLock()
+	defer comparisonResultMutex.RUnlock()
+	
+	return lastComparisonResult
+}
+
+// 폴더 비교 작업을 데이터베이스에 저장
+func (ds *DriveService) saveComparisonTask(task *FolderComparisonTask) error {
+	if task.ID == 0 {
+		// 새로운 작업 생성
+		result, err := ds.db.Exec(`
+			INSERT INTO folder_comparison_tasks 
+			(source_folder_id, target_folder_id, status, current_step, 
+			 source_folder_scanned, source_folder_total, target_folder_scanned, target_folder_total,
+			 hashes_calculated, total_hashes_to_calc, duplicates_found, error_message, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		`, task.SourceFolderID, task.TargetFolderID, task.Status, task.CurrentStep,
+			task.SourceFolderScanned, task.SourceFolderTotal, task.TargetFolderScanned, task.TargetFolderTotal,
+			task.HashesCalculated, task.TotalHashesToCalc, task.DuplicatesFound, task.ErrorMessage)
+		
+		if err != nil {
+			return fmt.Errorf("작업 저장 실패: %v", err)
+		}
+		
+		taskID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("작업 ID 조회 실패: %v", err)
+		}
+		task.ID = int(taskID)
+		
+		log.Printf("📝 새로운 폴더 비교 작업 저장됨: ID=%d", task.ID)
+	} else {
+		// 기존 작업 업데이트
+		_, err := ds.db.Exec(`
+			UPDATE folder_comparison_tasks SET
+			status = ?, current_step = ?, 
+			source_folder_scanned = ?, source_folder_total = ?, 
+			target_folder_scanned = ?, target_folder_total = ?,
+			hashes_calculated = ?, total_hashes_to_calc = ?, 
+			duplicates_found = ?, error_message = ?,
+			updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?
+		`, task.Status, task.CurrentStep,
+			task.SourceFolderScanned, task.SourceFolderTotal,
+			task.TargetFolderScanned, task.TargetFolderTotal,
+			task.HashesCalculated, task.TotalHashesToCalc,
+			task.DuplicatesFound, task.ErrorMessage, task.ID)
+		
+		if err != nil {
+			return fmt.Errorf("작업 업데이트 실패: %v", err)
+		}
+	}
+	
+	return nil
+}
+
+// 미완료된 폴더 비교 작업 조회
+func (ds *DriveService) getIncompleteComparisonTask() (*FolderComparisonTask, error) {
+	var task FolderComparisonTask
+	
+	err := ds.db.QueryRow(`
+		SELECT id, source_folder_id, target_folder_id, status, current_step,
+		       source_folder_scanned, source_folder_total, target_folder_scanned, target_folder_total,
+		       hashes_calculated, total_hashes_to_calc, duplicates_found, error_message,
+		       created_at, updated_at
+		FROM folder_comparison_tasks 
+		WHERE status IN ('pending', 'running') 
+		ORDER BY updated_at DESC 
+		LIMIT 1
+	`).Scan(
+		&task.ID, &task.SourceFolderID, &task.TargetFolderID, &task.Status, &task.CurrentStep,
+		&task.SourceFolderScanned, &task.SourceFolderTotal, &task.TargetFolderScanned, &task.TargetFolderTotal,
+		&task.HashesCalculated, &task.TotalHashesToCalc, &task.DuplicatesFound, &task.ErrorMessage,
+		&task.CreatedAt, &task.UpdatedAt,
+	)
+	
+	if err == sql.ErrNoRows {
+		return nil, nil // 미완료된 작업 없음
+	} else if err != nil {
+		return nil, fmt.Errorf("작업 조회 실패: %v", err)
+	}
+	
+	return &task, nil
+}
+
+// 작업에 파일 정보 저장
+func (ds *DriveService) saveComparisonFiles(taskID int, files []*DriveFile, folderType string, isDuplicates []bool) error {
+	tx, err := ds.db.Begin()
+	if err != nil {
+		return fmt.Errorf("트랜잭션 시작 실패: %v", err)
+	}
+	defer tx.Rollback()
+	
+	// 기존 파일 정보 삭제 (해당 폴더 타입만)
+	_, err = tx.Exec("DELETE FROM comparison_result_files WHERE task_id = ? AND folder_type = ?", taskID, folderType)
+	if err != nil {
+		return fmt.Errorf("기존 파일 정보 삭제 실패: %v", err)
+	}
+	
+	// 새 파일 정보 저장
+	stmt, err := tx.Prepare(`
+		INSERT INTO comparison_result_files 
+		(task_id, file_id, file_name, file_size, file_hash, file_path, web_view_link, mime_type, modified_time, is_duplicate, folder_type)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return fmt.Errorf("prepared statement 생성 실패: %v", err)
+	}
+	defer stmt.Close()
+	
+	for i, file := range files {
+		isDup := false
+		if i < len(isDuplicates) {
+			isDup = isDuplicates[i]
+		}
+		
+		_, err = stmt.Exec(taskID, file.ID, file.Name, file.Size, file.Hash, file.Path, 
+			file.WebViewLink, file.MimeType, file.ModifiedTime, isDup, folderType)
+		if err != nil {
+			return fmt.Errorf("파일 정보 저장 실패: %v", err)
+		}
+	}
+	
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("트랜잭션 커밋 실패: %v", err)
+	}
+	
+	log.Printf("💾 파일 정보 저장 완료: %d개 파일 (%s)", len(files), folderType)
+	return nil
+}
+
+// 저장된 파일 정보 불러오기
+func (ds *DriveService) loadComparisonFiles(taskID int, folderType string) ([]*DriveFile, error) {
+	rows, err := ds.db.Query(`
+		SELECT file_id, file_name, file_size, file_hash, file_path, web_view_link, mime_type, modified_time, is_duplicate
+		FROM comparison_result_files 
+		WHERE task_id = ? AND folder_type = ?
+		ORDER BY file_name
+	`, taskID, folderType)
+	if err != nil {
+		return nil, fmt.Errorf("파일 정보 조회 실패: %v", err)
+	}
+	defer rows.Close()
+	
+	var files []*DriveFile
+	for rows.Next() {
+		var file DriveFile
+		var isDuplicate bool
+		
+		err := rows.Scan(&file.ID, &file.Name, &file.Size, &file.Hash, &file.Path,
+			&file.WebViewLink, &file.MimeType, &file.ModifiedTime, &isDuplicate)
+		if err != nil {
+			return nil, fmt.Errorf("파일 정보 스캔 실패: %v", err)
+		}
+		
+		files = append(files, &file)
+	}
+	
+	return files, nil
+}
+
+// 두 폴더를 비교하여 대상 폴더의 중복 파일을 찾는다
+func (ds *DriveService) compareFolders(sourceFolderID, targetFolderID string) (*FolderComparisonResult, error) {
+	log.Printf("🔍 폴더 비교 시작: 기준 폴더 %s vs 대상 폴더 %s", sourceFolderID, targetFolderID)
+	
+	// 기존 미완료 작업 확인
+	existingTask, err := ds.getIncompleteComparisonTask()
+	if err != nil {
+		log.Printf("⚠️ 기존 작업 확인 실패: %v", err)
+	}
+	
+	var task *FolderComparisonTask
+	var sourceFiles, targetFiles []*DriveFile
+	
+	if existingTask != nil && existingTask.SourceFolderID == sourceFolderID && existingTask.TargetFolderID == targetFolderID {
+		// 기존 작업 재개
+		log.Printf("🔄 기존 작업 재개: ID=%d", existingTask.ID)
+		task = existingTask
+		task.Status = "running"
+		task.CurrentStep = "기존 작업 재개 중..."
+		ds.saveComparisonTask(task)
+		
+		// 저장된 파일 정보 불러오기
+		if task.SourceFolderTotal > 0 {
+			sourceFiles, err = ds.loadComparisonFiles(task.ID, "source")
+			if err != nil {
+				log.Printf("⚠️ 기준 폴더 파일 정보 불러오기 실패: %v", err)
+				sourceFiles = nil
+			} else {
+				log.Printf("📂 저장된 기준 폴더 파일 정보 불러옴: %d개", len(sourceFiles))
+			}
+		}
+		
+		if task.TargetFolderTotal > 0 {
+			targetFiles, err = ds.loadComparisonFiles(task.ID, "target")
+			if err != nil {
+				log.Printf("⚠️ 대상 폴더 파일 정보 불러오기 실패: %v", err)
+				targetFiles = nil
+			} else {
+				log.Printf("📂 저장된 대상 폴더 파일 정보 불러옴: %d개", len(targetFiles))
+			}
+		}
+	} else {
+		// 새로운 작업 시작
+		task = &FolderComparisonTask{
+			SourceFolderID: sourceFolderID,
+			TargetFolderID: targetFolderID,
+			Status:         "running",
+			CurrentStep:    "초기화 중...",
+		}
+		err = ds.saveComparisonTask(task)
+		if err != nil {
+			return nil, fmt.Errorf("작업 저장 실패: %v", err)
+		}
+		log.Printf("📝 새로운 폴더 비교 작업 생성: ID=%d", task.ID)
+	}
+	
+	// 현재 작업을 전역 변수에 저장
+	currentTaskMutex.Lock()
+	currentComparisonTask = task
+	currentTaskMutex.Unlock()
+	
+	// 진행 상황 초기화
+	initComparisonProgress(sourceFolderID, targetFolderID)
+
+	// 기준 폴더 파일 스캔 (저장된 데이터가 없는 경우에만)
+	if sourceFiles == nil {
+		updateComparisonProgress(func(p *FolderComparisonProgress) {
+			p.CurrentStep = "기준 폴더 스캔 중..."
+		})
+		
+		sourceFiles, err = ds.getFilesInFolderWithProgress(sourceFolderID, true, "source")
+		if err != nil {
+			updateComparisonProgress(func(p *FolderComparisonProgress) {
+				p.Status = "error"
+				p.ErrorMessage = fmt.Sprintf("기준 폴더 파일 조회 실패: %v", err)
+			})
+			return nil, fmt.Errorf("기준 폴더 파일 조회 실패: %v", err)
+		}
+		log.Printf("📁 기준 폴더에서 %d개 파일 발견", len(sourceFiles))
+		
+		// 스캔 완료 후 파일 정보 저장
+		err = ds.saveComparisonFiles(task.ID, sourceFiles, "source", nil)
+		if err != nil {
+			log.Printf("⚠️ 기준 폴더 파일 정보 저장 실패: %v", err)
+		}
+		
+		// 작업 진행 상황 업데이트
+		task.SourceFolderTotal = len(sourceFiles)
+		task.SourceFolderScanned = len(sourceFiles)
+		ds.saveComparisonTask(task)
+	} else {
+		log.Printf("📂 저장된 기준 폴더 파일 정보 사용: %d개", len(sourceFiles))
+	}
+
+	// 대상 폴더 파일 스캔 (저장된 데이터가 없는 경우에만)
+	if targetFiles == nil {
+		updateComparisonProgress(func(p *FolderComparisonProgress) {
+			p.CurrentStep = "대상 폴더 스캔 중..."
+			p.SourceFolderTotal = len(sourceFiles)
+		})
+		
+		targetFiles, err = ds.getFilesInFolderWithProgress(targetFolderID, true, "target")
+		if err != nil {
+			updateComparisonProgress(func(p *FolderComparisonProgress) {
+				p.Status = "error"
+				p.ErrorMessage = fmt.Sprintf("대상 폴더 파일 조회 실패: %v", err)
+			})
+			return nil, fmt.Errorf("대상 폴더 파일 조회 실패: %v", err)
+		}
+		log.Printf("📁 대상 폴더에서 %d개 파일 발견", len(targetFiles))
+		
+		// 스캔 완료 후 파일 정보 저장
+		err = ds.saveComparisonFiles(task.ID, targetFiles, "target", nil)
+		if err != nil {
+			log.Printf("⚠️ 대상 폴더 파일 정보 저장 실패: %v", err)
+		}
+		
+		// 작업 진행 상황 업데이트
+		task.TargetFolderTotal = len(targetFiles)
+		task.TargetFolderScanned = len(targetFiles)
+		ds.saveComparisonTask(task)
+	} else {
+		log.Printf("📂 저장된 대상 폴더 파일 정보 사용: %d개", len(targetFiles))
+		
+		updateComparisonProgress(func(p *FolderComparisonProgress) {
+			p.SourceFolderTotal = len(sourceFiles)
+		})
+	}
+
+	// 기준 폴더 파일들의 해시 맵 생성
+	updateComparisonProgress(func(p *FolderComparisonProgress) {
+		p.CurrentStep = "해시 맵 생성 중..."
+		p.TargetFolderTotal = len(targetFiles)
+	})
+	
+	sourceFileHashes := make(map[string]*DriveFile)
+	for _, file := range sourceFiles {
+		if file.Hash != "" {
+			sourceFileHashes[file.Hash] = file
+		}
+	}
+	log.Printf("🔑 기준 폴더에서 %d개 파일의 해시 생성", len(sourceFileHashes))
+
+	// 대상 폴더에서 중복 파일 찾기
+	updateComparisonProgress(func(p *FolderComparisonProgress) {
+		p.CurrentStep = "중복 파일 검출 중..."
+	})
+	
+	var duplicatesInTarget []*DriveFile
+	for i, targetFile := range targetFiles {
+		if targetFile.Hash != "" {
+			if sourceFile, exists := sourceFileHashes[targetFile.Hash]; exists {
+				log.Printf("🔄 중복 발견: %s (대상) = %s (기준)", targetFile.Name, sourceFile.Name)
+				// 추가 정보를 포함한 중복 파일 정보 설정
+				duplicateFile := &DriveFile{
+					ID:           targetFile.ID,
+					Name:         targetFile.Name,
+					Size:         targetFile.Size,
+					WebViewLink:  targetFile.WebViewLink,
+					MimeType:     targetFile.MimeType,
+					ModifiedTime: targetFile.ModifiedTime,
+					Hash:         targetFile.Hash,
+					Parents:      targetFile.Parents,
+					Path:         targetFile.Path,
+				}
+				duplicatesInTarget = append(duplicatesInTarget, duplicateFile)
+				
+				// 진행 상황 업데이트
+				updateComparisonProgress(func(p *FolderComparisonProgress) {
+					p.DuplicatesFound = len(duplicatesInTarget)
+				})
+			}
+		}
+		
+		// 진행률 업데이트 및 주기적 저장 (50개마다)
+		if i%50 == 0 || i == len(targetFiles)-1 {
+			updateComparisonProgress(func(p *FolderComparisonProgress) {
+				p.CurrentStep = fmt.Sprintf("중복 파일 검출 중... (%d/%d)", i+1, len(targetFiles))
+			})
+			
+			// 작업 진행 상황을 데이터베이스에 저장
+			task.DuplicatesFound = len(duplicatesInTarget)
+			ds.saveComparisonTask(task)
+		}
+	}
+
+	// 완료 상태 업데이트
+	updateComparisonProgress(func(p *FolderComparisonProgress) {
+		p.Status = "completed"
+		p.CurrentStep = "완료"
+		p.DuplicatesFound = len(duplicatesInTarget)
+	})
+
+	// 데이터베이스 작업을 완료로 표시
+	task.Status = "completed"
+	task.CurrentStep = "완료"
+	task.DuplicatesFound = len(duplicatesInTarget)
+	ds.saveComparisonTask(task)
+
+	// 폴더 삭제 권장 분석
+	canDeleteTargetFolder := false
+	duplicationPercentage := 0.0
+	var targetFolderName string
+	
+	if len(targetFiles) > 0 {
+		duplicationPercentage = float64(len(duplicatesInTarget)) / float64(len(targetFiles)) * 100
+		// 95% 이상 중복이면 폴더 전체 삭제 권장
+		canDeleteTargetFolder = duplicationPercentage >= 95.0
+		
+		if canDeleteTargetFolder {
+			log.Printf("🎯 폴더 전체 삭제 권장: 대상 폴더의 %.1f%% (%d/%d)가 중복됨", 
+				duplicationPercentage, len(duplicatesInTarget), len(targetFiles))
+		}
+	}
+	
+	// 대상 폴더 정보 조회
+	if canDeleteTargetFolder {
+		folderInfo, err := ds.service.Files.Get(targetFolderID).Fields("id,name").Do()
+		if err != nil {
+			log.Printf("⚠️ 대상 폴더 정보 조회 실패: %v", err)
+		} else {
+			targetFolderName = folderInfo.Name
+		}
+	}
+
+	result := &FolderComparisonResult{
+		SourceFolder:       sourceFolderID,
+		TargetFolder:       targetFolderID,
+		SourceFiles:        sourceFiles,
+		TargetFiles:        targetFiles,
+		DuplicatesInTarget: duplicatesInTarget,
+		TotalDuplicates:    len(duplicatesInTarget),
+		
+		// 폴더 삭제 권장 정보
+		CanDeleteTargetFolder:  canDeleteTargetFolder,
+		TargetFolderName:      targetFolderName,
+		TargetFolderID:        targetFolderID,
+		DuplicationPercentage: duplicationPercentage,
+	}
+
+	// 결과 저장
+	saveComparisonResult(result)
+	
+	log.Printf("✅ 폴더 비교 완료: 대상 폴더에서 %d개 중복 파일 발견", len(duplicatesInTarget))
+	return result, nil
+}
+
+// 진행 상황 추적과 함께 폴더 스캔
+func (ds *DriveService) getFilesInFolderWithProgress(folderID string, calculateHashes bool, folderType string) ([]*DriveFile, error) {
+	var allFiles []*DriveFile
+	pageToken := ""
+
+	for {
+		query := fmt.Sprintf("'%s' in parents and trashed=false", folderID)
+		listCall := ds.service.Files.List().
+			Q(query).
+			Fields("nextPageToken, files(id, name, size, mimeType, modifiedTime, webViewLink, parents)").
+			PageSize(1000)
+
+		if pageToken != "" {
+			listCall = listCall.PageToken(pageToken)
+		}
+
+		response, err := listCall.Do()
+		if err != nil {
+			return nil, fmt.Errorf("폴더 파일 목록 조회 실패: %v", err)
+		}
+
+		for i, file := range response.Files {
+			// 폴더는 제외, 파일만 처리
+			if file.MimeType != "application/vnd.google-apps.folder" {
+				// 빈 파일만 필터링
+				if file.Size <= 0 {
+					log.Printf("⏭️ 빈 파일 스킵: %s", file.Name)
+					continue
+				}
+				
+				driveFile := &DriveFile{
+					ID:           file.Id,
+					Name:         file.Name,
+					Size:         file.Size,
+					WebViewLink:  file.WebViewLink,
+					MimeType:     file.MimeType,
+					ModifiedTime: file.ModifiedTime,
+					Parents:      file.Parents,
+				}
+
+				// 경로 계산
+				if len(file.Parents) > 0 {
+					driveFile.Path = ds.buildFullPath(file.Parents[0])
+				} else {
+					driveFile.Path = "/"
+				}
+
+				// 해시는 나중에 병렬로 계산
+
+				allFiles = append(allFiles, driveFile)
+				
+				// 진행률 업데이트
+				if folderType == "source" {
+					updateComparisonProgress(func(p *FolderComparisonProgress) {
+						p.SourceFolderScanned = len(allFiles)
+					})
+				} else {
+					updateComparisonProgress(func(p *FolderComparisonProgress) {
+						p.TargetFolderScanned = len(allFiles)
+					})
+				}
+			} else {
+				// 하위 폴더가 있는 경우 재귀적으로 처리
+				subFiles, err := ds.getFilesInFolderWithProgress(file.Id, calculateHashes, folderType)
+				if err != nil {
+					log.Printf("⚠️ 하위 폴더 처리 실패 (%s): %v", file.Name, err)
+					continue
+				}
+				allFiles = append(allFiles, subFiles...)
+			}
+			
+			// 100개마다 진행 상황 로그
+			if (i+1)%100 == 0 {
+				log.Printf("📄 %s 폴더 스캔 중: %d개 파일 처리됨", folderType, len(allFiles))
+			}
+		}
+
+		pageToken = response.NextPageToken
+		if pageToken == "" {
+			break
+		}
+	}
+
+	// 파일 스캔 완료 알림
+	log.Printf("✅ 폴더 스캔 완료: %s 타입, %d개 파일 발견", folderType, len(allFiles))
+	
+	// 해시 계산이 필요한 경우 충분한 검증 후 병렬 처리
+	if calculateHashes {
+		log.Printf("🔍 해시 계산 준비 중: %s 폴더", folderType)
+		
+		// 파일 스캔이 완전히 끝날 때까지 잠시 대기
+		time.Sleep(500 * time.Millisecond)
+		
+		// 크기가 0보다 큰 파일들만 필터링하고 유효성 검증
+		var filesToHash []*DriveFile
+		for _, file := range allFiles {
+			if file.Size > 0 && file.ID != "" && file.Name != "" {
+				// 파일 정보가 완전한지 한 번 더 검증
+				if len(file.ID) > 10 { // Google Drive 파일 ID는 일반적으로 28자 이상
+					filesToHash = append(filesToHash, file)
+				} else {
+					log.Printf("⚠️ 불완전한 파일 정보 건너뜀: ID=%s, Name=%s", file.ID, file.Name)
+				}
+			}
+		}
+		
+		log.Printf("📊 해시 계산 대상: 전체 %d개 중 %d개 파일 (크기 > 0, 유효한 ID)", len(allFiles), len(filesToHash))
+		
+		if len(filesToHash) > 0 {
+			// 진행률 업데이트를 더 명확하게
+			updateComparisonProgress(func(p *FolderComparisonProgress) {
+				if folderType == "source" {
+					p.CurrentStep = fmt.Sprintf("📁 기준 폴더 스캔 완료 (%d개) → 🔑 해시 계산 시작...", len(allFiles))
+				} else {
+					p.CurrentStep = fmt.Sprintf("📁 대상 폴더 스캔 완료 (%d개) → 🔑 해시 계산 시작...", len(allFiles))
+				}
+				p.TotalHashesToCalc = len(filesToHash)
+			})
+			
+			// 해시 계산 시작 전 한 번 더 대기
+			time.Sleep(1 * time.Second)
+			log.Printf("🚀 해시 계산 시작: %d개 파일", len(filesToHash))
+			
+			// 병렬 해시 계산 (설정된 워커 개수 사용)
+			maxWorkers := getMaxWorkers()
+			err := ds.calculateHashesInParallel(filesToHash, maxWorkers)
+			if err != nil {
+				log.Printf("⚠️ 병렬 해시 계산 실패: %v", err)
+			} else {
+				log.Printf("✅ 해시 계산 완료: %s 폴더", folderType)
+			}
+		} else {
+			log.Printf("ℹ️ 해시 계산할 파일이 없음: %s 폴더", folderType)
+		}
+	}
+
+	return allFiles, nil
+}
+
+// 폴더 내의 모든 파일을 재귀적으로 조회하고 해시를 계산한다 (기존 함수 유지)
+func (ds *DriveService) getFilesInFolder(folderID string, calculateHashes bool) ([]*DriveFile, error) {
+	var allFiles []*DriveFile
+	pageToken := ""
+
+	for {
+		query := fmt.Sprintf("'%s' in parents and trashed=false", folderID)
+		listCall := ds.service.Files.List().
+			Q(query).
+			Fields("nextPageToken, files(id, name, size, mimeType, modifiedTime, webViewLink, parents)").
+			PageSize(1000)
+
+		if pageToken != "" {
+			listCall = listCall.PageToken(pageToken)
+		}
+
+		response, err := listCall.Do()
+		if err != nil {
+			return nil, fmt.Errorf("폴더 파일 목록 조회 실패: %v", err)
+		}
+
+		for _, file := range response.Files {
+			// 폴더는 제외, 파일만 처리
+			if file.MimeType != "application/vnd.google-apps.folder" {
+				driveFile := &DriveFile{
+					ID:           file.Id,
+					Name:         file.Name,
+					Size:         file.Size,
+					WebViewLink:  file.WebViewLink,
+					MimeType:     file.MimeType,
+					ModifiedTime: file.ModifiedTime,
+					Parents:      file.Parents,
+				}
+
+				// 경로 계산
+				if len(file.Parents) > 0 {
+					driveFile.Path = ds.buildFullPath(file.Parents[0])
+				} else {
+					driveFile.Path = "/"
+				}
+
+				// 해시 계산이 필요한 경우
+				if calculateHashes && file.Size > 0 {
+					hash, err := ds.calculateFileHash(file.Id)
+					if err != nil {
+						log.Printf("⚠️ 해시 계산 실패 (%s): %v", file.Name, err)
+						continue
+					}
+					driveFile.Hash = hash
+				}
+
+				allFiles = append(allFiles, driveFile)
+			} else {
+				// 하위 폴더가 있는 경우 재귀적으로 처리
+				subFiles, err := ds.getFilesInFolder(file.Id, calculateHashes)
+				if err != nil {
+					log.Printf("⚠️ 하위 폴더 처리 실패 (%s): %v", file.Name, err)
+					continue
+				}
+				allFiles = append(allFiles, subFiles...)
+			}
+		}
+
+		pageToken = response.NextPageToken
+		if pageToken == "" {
+			break
+		}
+	}
+
+	return allFiles, nil
+}
+
+// 폴더 ID를 URL에서 추출하는 헬퍼 함수
+func extractFolderIDFromURL(folderURL string) string {
+	// https://drive.google.com/drive/folders/1ABC123 형태에서 ID 추출
+	re := regexp.MustCompile(`folders/([a-zA-Z0-9-_]+)`)
+	matches := re.FindStringSubmatch(folderURL)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return folderURL // URL이 아닌 경우 그대로 반환 (이미 ID일 수 있음)
+}
+
 func (ds *DriveService) clearAllData() error {
 	log.Println("🗑️ 모든 데이터 삭제 중...")
 	
@@ -1402,6 +2233,564 @@ func calculateHash(content []byte) string {
 	return fmt.Sprintf("%x", hash)
 }
 
+// 파일 ID로부터 파일을 다운로드하여 해시를 계산하는 메서드 (최적화 버전)
+func (ds *DriveService) calculateFileHash(fileID string) (string, error) {
+	return ds.calculateFileHashWithRetry(fileID, 3)
+}
+
+func (ds *DriveService) calculateFileHashWithRetry(fileID string, maxRetries int) (string, error) {
+	var lastErr error
+	
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		hash, err := ds.calculateFileHashOnce(fileID)
+		if err == nil {
+			return hash, nil
+		}
+		
+		lastErr = err
+		if attempt < maxRetries {
+			// 지수 백오프: 1초, 2초, 4초 대기
+			waitTime := time.Duration(attempt) * time.Second
+			log.Printf("🔄 해시 계산 재시도 %d/%d (%s): %v, %v 대기", attempt, maxRetries, fileID, err, waitTime)
+			time.Sleep(waitTime)
+		}
+	}
+	
+	return "", fmt.Errorf("최대 재시도 후 실패: %v", lastErr)
+}
+
+func (ds *DriveService) calculateFileHashOnce(fileID string) (string, error) {
+	// 파일 ID 유효성 검증
+	if fileID == "" || len(fileID) < 10 {
+		return "", fmt.Errorf("유효하지 않은 파일 ID: %s", fileID)
+	}
+	
+	log.Printf("🔍 해시 계산 시작: %s", fileID)
+	
+	// Google Drive API를 통해 파일 내용 다운로드 (타임아웃 없음)
+	resp, err := ds.service.Files.Get(fileID).Download()
+	if err != nil {
+		return "", fmt.Errorf("파일 다운로드 실패: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	// 간단한 해시 계산
+	hasher := sha256.New()
+	
+	// io.Copy를 사용한 간단한 복사
+	_, err = io.Copy(hasher, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("파일 읽기 실패: %v", err)
+	}
+	
+	log.Printf("✅ 해시 계산 완료: %s", fileID)
+	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+// 중복 그룹을 데이터베이스에서 제거
+func (ds *DriveService) removeDuplicateGroup(groupHash string) error {
+	if groupHash == "" {
+		return fmt.Errorf("그룹 해시가 필요합니다")
+	}
+
+	log.Printf("🗑️ 중복 그룹 제거 요청: %s", groupHash)
+
+	// 해당 해시를 가진 모든 파일을 데이터베이스에서 삭제
+	query := `DELETE FROM files WHERE hash = ?`
+	result, err := ds.db.Exec(query, groupHash)
+	if err != nil {
+		return fmt.Errorf("데이터베이스에서 중복 그룹 삭제 실패: %v", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("⚠️ 삭제된 행 수 확인 실패: %v", err)
+	} else {
+		log.Printf("✅ 중복 그룹 제거 완료: %d개 파일 제거됨", rowsAffected)
+	}
+
+	return nil
+}
+
+// 삭제된 파일들을 데이터베이스에서 정리
+func (ds *DriveService) cleanupDeletedFiles() (int, error) {
+	log.Printf("🧹 삭제된 파일 정리 시작...")
+
+	// 데이터베이스에서 모든 파일 ID 가져오기
+	query := `SELECT id, name FROM files`
+	rows, err := ds.db.Query(query)
+	if err != nil {
+		return 0, fmt.Errorf("파일 목록 조회 실패: %v", err)
+	}
+	defer rows.Close()
+
+	var filesToCheck []struct {
+		ID   string
+		Name string
+	}
+
+	for rows.Next() {
+		var file struct {
+			ID   string
+			Name string
+		}
+		if err := rows.Scan(&file.ID, &file.Name); err != nil {
+			log.Printf("⚠️ 파일 정보 스캔 실패: %v", err)
+			continue
+		}
+		filesToCheck = append(filesToCheck, file)
+	}
+
+	log.Printf("📊 총 %d개 파일 확인 중...", len(filesToCheck))
+
+	deletedCount := 0
+	for i, file := range filesToCheck {
+		if i%100 == 0 {
+			log.Printf("📋 진행률: %d/%d (%d개 삭제됨)", i, len(filesToCheck), deletedCount)
+		}
+
+		// Google Drive API로 파일 존재 여부 확인
+		_, err := ds.service.Files.Get(file.ID).Fields("id,trashed").Do()
+		if err != nil {
+			// 파일이 존재하지 않는 경우
+			log.Printf("❌ 삭제된 파일 발견: %s (%s)", file.Name, file.ID)
+			
+			// 데이터베이스에서 제거
+			deleteErr := ds.deleteFileFromDB(file.ID)
+			if deleteErr != nil {
+				log.Printf("⚠️ DB에서 파일 삭제 실패: %v", deleteErr)
+			} else {
+				deletedCount++
+			}
+		}
+	}
+
+	log.Printf("✅ 삭제된 파일 정리 완료: %d개 파일 제거됨", deletedCount)
+	return deletedCount, nil
+}
+
+// 빈 폴더인지 확인
+func (ds *DriveService) isFolderEmpty(folderID string) (bool, error) {
+	query := fmt.Sprintf("'%s' in parents and trashed=false", folderID)
+	listCall := ds.service.Files.List().
+		Q(query).
+		Fields("files(id)").
+		PageSize(1) // 하나라도 있으면 빈 폴더가 아님
+
+	response, err := listCall.Do()
+	if err != nil {
+		return false, fmt.Errorf("폴더 내용 확인 실패: %v", err)
+	}
+
+	return len(response.Files) == 0, nil
+}
+
+// 폴더 삭제
+func (ds *DriveService) deleteFolder(folderID string) error {
+	// 폴더 정보 먼저 가져오기
+	folderInfo, err := ds.service.Files.Get(folderID).Fields("id,name,parents").Do()
+	if err != nil {
+		return fmt.Errorf("폴더 정보 조회 실패: %v", err)
+	}
+
+	log.Printf("🗑️ 빈 폴더 삭제: %s (%s)", folderInfo.Name, folderID)
+
+	// 폴더 삭제
+	err = ds.service.Files.Delete(folderID).Do()
+	if err != nil {
+		return fmt.Errorf("폴더 삭제 실패: %v", err)
+	}
+
+	log.Printf("✅ 폴더 삭제 완료: %s", folderInfo.Name)
+
+	// 상위 폴더도 빈 폴더인지 재귀적으로 확인
+	if len(folderInfo.Parents) > 0 {
+		parentFolderID := folderInfo.Parents[0]
+		return ds.checkAndDeleteEmptyFolder(parentFolderID)
+	}
+
+	return nil
+}
+
+// 폴더가 비어있으면 삭제하고 상위 폴더도 재귀적으로 확인
+func (ds *DriveService) checkAndDeleteEmptyFolder(folderID string) error {
+	// 루트 폴더나 특수 폴더는 삭제하지 않음
+	if folderID == "" || folderID == "root" {
+		return nil
+	}
+
+	// 폴더 정보 확인
+	folderInfo, err := ds.service.Files.Get(folderID).Fields("id,name,mimeType,parents").Do()
+	if err != nil {
+		// 폴더가 이미 삭제되었거나 접근할 수 없는 경우
+		log.Printf("⚠️ 폴더 정보 조회 실패 (%s): %v", folderID, err)
+		return nil
+	}
+
+	// 폴더가 아닌 경우 건너뛰기
+	if folderInfo.MimeType != "application/vnd.google-apps.folder" {
+		return nil
+	}
+
+	// 빈 폴더인지 확인
+	isEmpty, err := ds.isFolderEmpty(folderID)
+	if err != nil {
+		log.Printf("⚠️ 폴더 빈 상태 확인 실패 (%s): %v", folderInfo.Name, err)
+		return nil
+	}
+
+	if isEmpty {
+		log.Printf("📂 빈 폴더 발견: %s (%s)", folderInfo.Name, folderID)
+		
+		// 폴더 삭제
+		err = ds.service.Files.Delete(folderID).Do()
+		if err != nil {
+			log.Printf("⚠️ 폴더 삭제 실패 (%s): %v", folderInfo.Name, err)
+			return nil
+		}
+
+		log.Printf("✅ 빈 폴더 삭제 완료: %s", folderInfo.Name)
+
+		// 상위 폴더도 빈 폴더인지 재귀적으로 확인
+		if len(folderInfo.Parents) > 0 {
+			return ds.checkAndDeleteEmptyFolder(folderInfo.Parents[0])
+		}
+	}
+
+	return nil
+}
+
+// 파일 삭제 후 상위 폴더들의 빈 상태 확인 및 삭제
+func (ds *DriveService) cleanupEmptyFoldersAfterFileDeletion(fileID string) error {
+	// 삭제된 파일의 상위 폴더 정보 조회
+	fileInfo, err := ds.service.Files.Get(fileID).Fields("id,name,parents").Do()
+	if err != nil {
+		// 파일이 이미 삭제되었으므로 데이터베이스에서 상위 폴더 정보를 가져와야 함
+		log.Printf("⚠️ 삭제된 파일의 상위 폴더 확인 불가: %s", fileID)
+		return nil
+	}
+
+	// 상위 폴더가 있으면 빈 폴더인지 확인
+	if len(fileInfo.Parents) > 0 {
+		return ds.checkAndDeleteEmptyFolder(fileInfo.Parents[0])
+	}
+
+	return nil
+}
+
+// 전체 드라이브에서 빈 폴더들을 찾아서 정리
+func (ds *DriveService) cleanupAllEmptyFolders() (int, error) {
+	log.Printf("📂 전체 드라이브 빈 폴더 정리 시작...")
+
+	// 모든 폴더 조회
+	query := "mimeType='application/vnd.google-apps.folder' and trashed=false"
+	var allFolders []*drive.File
+	pageToken := ""
+
+	for {
+		listCall := ds.service.Files.List().
+			Q(query).
+			Fields("nextPageToken, files(id, name, parents)").
+			PageSize(1000)
+
+		if pageToken != "" {
+			listCall = listCall.PageToken(pageToken)
+		}
+
+		response, err := listCall.Do()
+		if err != nil {
+			return 0, fmt.Errorf("폴더 목록 조회 실패: %v", err)
+		}
+
+		allFolders = append(allFolders, response.Files...)
+
+		pageToken = response.NextPageToken
+		if pageToken == "" {
+			break
+		}
+	}
+
+	log.Printf("📊 총 %d개 폴더 확인 중...", len(allFolders))
+
+	deletedCount := 0
+	
+	// 하위 폴더부터 정리하기 위해 역순으로 처리
+	for i := len(allFolders) - 1; i >= 0; i-- {
+		folder := allFolders[i]
+		
+		if i%100 == 0 {
+			log.Printf("📋 진행률: %d/%d (%d개 삭제됨)", len(allFolders)-i, len(allFolders), deletedCount)
+		}
+
+		// 루트 폴더나 특수 폴더는 건너뛰기
+		if folder.Id == "root" || len(folder.Parents) == 0 {
+			continue
+		}
+
+		// 빈 폴더인지 확인
+		isEmpty, err := ds.isFolderEmpty(folder.Id)
+		if err != nil {
+			log.Printf("⚠️ 폴더 빈 상태 확인 실패 (%s): %v", folder.Name, err)
+			continue
+		}
+
+		if isEmpty {
+			log.Printf("📂 빈 폴더 발견: %s (%s)", folder.Name, folder.Id)
+			
+			// 폴더 삭제
+			err = ds.service.Files.Delete(folder.Id).Do()
+			if err != nil {
+				log.Printf("⚠️ 폴더 삭제 실패 (%s): %v", folder.Name, err)
+				continue
+			}
+
+			log.Printf("✅ 빈 폴더 삭제 완료: %s", folder.Name)
+			deletedCount++
+
+			// API 제한을 위한 짧은 대기
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+
+	log.Printf("✅ 빈 폴더 정리 완료: %d개 폴더 삭제됨", deletedCount)
+	return deletedCount, nil
+}
+
+// 대상 폴더 전체 삭제 (중복 비교 후)
+func (ds *DriveService) deleteTargetFolder(folderID, folderName string) error {
+	log.Printf("🗑️ 대상 폴더 삭제 시작: %s (%s)", folderName, folderID)
+
+	// 폴더 존재 여부 확인
+	folderInfo, err := ds.service.Files.Get(folderID).Fields("id,name,trashed").Do()
+	if err != nil {
+		return fmt.Errorf("폴더 정보 조회 실패: %v", err)
+	}
+
+	if folderInfo.Trashed {
+		return fmt.Errorf("폴더가 이미 휴지통에 있습니다: %s", folderName)
+	}
+
+	// 폴더 내용 확인 (마지막 안전 확인)
+	query := fmt.Sprintf("'%s' in parents and trashed=false", folderID)
+	listCall := ds.service.Files.List().
+		Q(query).
+		Fields("files(id,name,mimeType)").
+		PageSize(10) // 몇 개만 확인
+
+	response, err := listCall.Do()
+	if err != nil {
+		return fmt.Errorf("폴더 내용 확인 실패: %v", err)
+	}
+
+	log.Printf("📂 폴더 '%s'에 %d개 항목 확인됨", folderName, len(response.Files))
+
+	// 빈 폴더가 아닌 경우 경고 (하지만 계속 진행)
+	if len(response.Files) > 0 {
+		log.Printf("⚠️ 주의: 폴더 '%s'에 %d개 파일/폴더가 있습니다. 모두 삭제됩니다.", folderName, len(response.Files))
+	}
+
+	// 폴더 삭제 실행
+	err = ds.service.Files.Delete(folderID).Do()
+	if err != nil {
+		return fmt.Errorf("폴더 삭제 실패: %v", err)
+	}
+
+	log.Printf("✅ 대상 폴더 삭제 완료: %s", folderName)
+	return nil
+}
+
+// 병렬 해시 계산을 위한 구조체
+type hashJob struct {
+	file   *DriveFile
+	result chan hashResult
+}
+
+type hashResult struct {
+	fileID string
+	hash   string
+	err    error
+}
+
+// 병렬 해시 계산 (최적화된 워커 풀 패턴)
+func (ds *DriveService) calculateHashesInParallel(files []*DriveFile, maxWorkers int) error {
+	if len(files) == 0 {
+		return nil
+	}
+	
+	// 최적화된 워커 수 계산 (너무 많으면 오히려 느려짐)
+	optimalWorkers := maxWorkers
+	if maxWorkers > 8 && len(files) < maxWorkers*4 {
+		optimalWorkers = max(4, len(files)/4)
+		log.Printf("⚙️ 워커 수 최적화: %d -> %d (파일 수 대비 조정)", maxWorkers, optimalWorkers)
+	}
+	
+	// 파일 유효성 재검증
+	var validFiles []*DriveFile
+	for _, file := range files {
+		if file.ID != "" && len(file.ID) > 10 && file.Size > 0 {
+			validFiles = append(validFiles, file)
+		} else {
+			log.Printf("⚠️ 해시 계산에서 유효하지 않은 파일 제외: ID=%s, Size=%d", file.ID, file.Size)
+		}
+	}
+	
+	if len(validFiles) != len(files) {
+		log.Printf("📋 파일 유효성 검증: %d개 → %d개 파일로 필터링됨", len(files), len(validFiles))
+		files = validFiles
+	}
+	
+	log.Printf("🚀 최적화된 병렬 해시 계산 시작: %d개 검증된 파일, %d개 워커", len(files), optimalWorkers)
+	
+	// 채널 버퍼 크기 최적화
+	jobs := make(chan hashJob, min(optimalWorkers*3, 1000))
+	results := make(chan hashResult, optimalWorkers*2)
+	
+	// 성능 모니터링
+	startTime := time.Now()
+	
+	// 워커 시작
+	var wg sync.WaitGroup
+	for w := 0; w < optimalWorkers; w++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			localCount := 0
+			localStart := time.Now()
+			
+			for job := range jobs {
+				hash, err := ds.calculateFileHash(job.file.ID)
+				results <- hashResult{
+					fileID: job.file.ID,
+					hash:   hash,
+					err:    err,
+				}
+				
+				localCount++
+				// 워커별 성능 로깅 (50개마다)
+				if localCount%50 == 0 {
+					elapsed := time.Since(localStart)
+					rate := float64(localCount) / elapsed.Seconds()
+					log.Printf("📊 워커 %d: %d개 처리, 속도: %.1f/s", workerID, localCount, rate)
+				}
+			}
+			
+			elapsed := time.Since(localStart)
+			rate := float64(localCount) / elapsed.Seconds()
+			log.Printf("✅ 워커 %d 완료: %d개 처리, 평균 %.1f/s", workerID, localCount, rate)
+		}(w)
+	}
+	
+	// 작업 큐에 추가
+	go func() {
+		defer close(jobs)
+		for i, file := range files {
+			jobs <- hashJob{file: file}
+			
+			// 큐 진행 상황 로깅 (1000개마다)
+			if i > 0 && i%1000 == 0 {
+				log.Printf("📤 큐 진행: %d/%d개 추가됨", i+1, len(files))
+			}
+		}
+		log.Printf("📤 모든 작업이 큐에 추가됨: %d개", len(files))
+	}()
+	
+	// 워커 완료 대기
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	
+	// 결과 수집
+	hashMap := make(map[string]string)
+	completedCount := 0
+	lastUpdateTime := time.Now()
+	var failCount int
+	
+	for result := range results {
+		completedCount++
+		
+		if result.err != nil {
+			failCount++
+			log.Printf("⚠️ 해시 계산 실패 (%s): %v", result.fileID, result.err)
+			continue
+		}
+		
+		hashMap[result.fileID] = result.hash
+		
+		// 최적화된 진행 상황 업데이트 (5초마다 또는 20개마다)
+		now := time.Now()
+		if completedCount%20 == 0 || now.Sub(lastUpdateTime) >= 5*time.Second {
+			percentage := float64(completedCount) / float64(len(files)) * 100
+			elapsed := time.Since(startTime)
+			rate := float64(completedCount) / elapsed.Seconds()
+			
+			var eta string
+			if rate > 0 {
+				etaSeconds := float64(len(files)-completedCount) / rate
+				eta = time.Duration(etaSeconds * float64(time.Second)).Round(time.Second).String()
+			} else {
+				eta = "계산 중..."
+			}
+			
+			updateComparisonProgress(func(p *FolderComparisonProgress) {
+				p.HashesCalculated = len(hashMap)
+				p.CurrentStep = fmt.Sprintf("해시 계산 중... (%d/%d, %.1f%%, %.1f/s, ETA: %s)", 
+					completedCount, len(files), percentage, rate, eta)
+			})
+			
+			log.Printf("📈 진행: %d/%d (%.1f%%), 성공: %d, 실패: %d, 속도: %.1f/s, 예상완료: %s", 
+				completedCount, len(files), percentage, len(hashMap), failCount, rate, eta)
+			lastUpdateTime = now
+		}
+	}
+	
+	// 파일 객체에 해시 할당
+	successCount := 0
+	for _, file := range files {
+		if hash, exists := hashMap[file.ID]; exists {
+			file.Hash = hash
+			successCount++
+		}
+	}
+	
+	// 최종 통계
+	elapsed := time.Since(startTime)
+	avgRate := float64(completedCount) / elapsed.Seconds()
+	
+	// 최종 진행 상황 업데이트
+	updateComparisonProgress(func(p *FolderComparisonProgress) {
+		p.HashesCalculated = successCount
+		p.CurrentStep = fmt.Sprintf("해시 계산 완료 (%d 성공, %d 실패, 평균 %.1f/s)", 
+			successCount, failCount, avgRate)
+	})
+	
+	log.Printf("🏁 병렬 해시 계산 완료!")
+	log.Printf("📊 총 %d개 파일 중 %d개 성공, %d개 실패", len(files), successCount, failCount)
+	log.Printf("⏱️ 총 소요시간: %v, 평균 속도: %.2f 파일/초", elapsed, avgRate)
+	
+	if avgRate < 1.0 {
+		log.Printf("💡 성능 팁: 워커 수를 줄이거나 네트워크 연결을 확인해보세요")
+	}
+	
+	return nil
+}
+
+// min 함수 (Go 1.18 이전 버전 호환성)
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// max 함수 (Go 1.18 이전 버전 호환성)
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // 폴더 이름 캐시
 var folderCache = make(map[string]string)
 var folderCacheMutex sync.RWMutex
@@ -1631,9 +3020,99 @@ func (ds *DriveService) bulkDeleteFiles(fileIDs []string) (int, error) {
 	log.Printf("🗑️ %d개 파일 일괄 삭제 시작...", len(fileIDs))
 	
 	deletedCount := 0
+	var parentFoldersToCheck []string
 	
 	for i, fileID := range fileIDs {
 		log.Printf("삭제 중 (%d/%d): %s", i+1, len(fileIDs), fileID)
+		
+		// 파일 삭제 전에 상위 폴더 정보 저장
+		fileInfo, err := ds.service.Files.Get(fileID).Fields("id,name,parents").Do()
+		if err != nil {
+			log.Printf("⚠️ 파일 정보 조회 실패 (%s): %v", fileID, err)
+		} else {
+			// 상위 폴더들을 나중에 확인할 목록에 추가
+			for _, parentID := range fileInfo.Parents {
+				// 중복 방지를 위해 이미 목록에 있는지 확인
+				found := false
+				for _, existingParent := range parentFoldersToCheck {
+					if existingParent == parentID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					parentFoldersToCheck = append(parentFoldersToCheck, parentID)
+				}
+			}
+			log.Printf("🗑️ 파일 삭제: %s (%s)", fileInfo.Name, fileID)
+		}
+		
+		err = ds.service.Files.Delete(fileID).Do()
+		if err != nil {
+			log.Printf("⚠️ 파일 삭제 실패: %s - %v", fileID, err)
+			continue
+		}
+		
+		// 데이터베이스에서도 삭제
+		ds.deleteFileFromDB(fileID)
+		
+		deletedCount++
+		
+		// API 제한을 위한 짧은 대기
+		time.Sleep(100 * time.Millisecond)
+	}
+	
+	log.Printf("✅ 일괄 삭제 완료: %d개 성공, %d개 실패", deletedCount, len(fileIDs)-deletedCount)
+	
+	// 모든 파일 삭제 후 빈 폴더들 정리 (백그라운드에서 실행)
+	if len(parentFoldersToCheck) > 0 {
+		log.Printf("📂 빈 폴더 정리 시작: %d개 폴더 확인", len(parentFoldersToCheck))
+		go func() {
+			for _, parentID := range parentFoldersToCheck {
+				err := ds.checkAndDeleteEmptyFolder(parentID)
+				if err != nil {
+					log.Printf("⚠️ 빈 폴더 정리 실패: %v", err)
+				}
+			}
+			log.Printf("✅ 빈 폴더 정리 완료")
+		}()
+	}
+	
+	return deletedCount, nil
+}
+
+func (ds *DriveService) bulkDeleteFilesWithCleanup(fileIDs []string, cleanupEmptyFolders bool) (int, error) {
+	log.Printf("🗑️ %d개 파일 일괄 삭제 시작 (빈 폴더 정리: %v)...", len(fileIDs), cleanupEmptyFolders)
+	
+	deletedCount := 0
+	var parentFoldersToCheck []string
+	
+	for i, fileID := range fileIDs {
+		log.Printf("삭제 중 (%d/%d): %s", i+1, len(fileIDs), fileID)
+		
+		// 빈 폴더 정리가 활성화된 경우에만 상위 폴더 정보 저장
+		if cleanupEmptyFolders {
+			fileInfo, err := ds.service.Files.Get(fileID).Fields("id,name,parents").Do()
+			if err != nil {
+				log.Printf("⚠️ 파일 정보 조회 실패 (%s): %v", fileID, err)
+			} else {
+				// 상위 폴더들을 나중에 확인할 목록에 추가
+				for _, parentID := range fileInfo.Parents {
+					// 중복 방지를 위해 이미 목록에 있는지 확인
+					found := false
+					for _, existingParent := range parentFoldersToCheck {
+						if existingParent == parentID {
+							found = true
+							break
+						}
+					}
+					if !found {
+						parentFoldersToCheck = append(parentFoldersToCheck, parentID)
+					}
+				}
+				log.Printf("🗑️ 파일 삭제: %s (%s)", fileInfo.Name, fileID)
+			}
+		}
 		
 		err := ds.service.Files.Delete(fileID).Do()
 		if err != nil {
@@ -1651,6 +3130,23 @@ func (ds *DriveService) bulkDeleteFiles(fileIDs []string) (int, error) {
 	}
 	
 	log.Printf("✅ 일괄 삭제 완료: %d개 성공, %d개 실패", deletedCount, len(fileIDs)-deletedCount)
+	
+	// 빈 폴더 정리가 활성화된 경우에만 실행
+	if cleanupEmptyFolders && len(parentFoldersToCheck) > 0 {
+		log.Printf("📂 빈 폴더 정리 시작: %d개 폴더 확인", len(parentFoldersToCheck))
+		go func() {
+			for _, parentID := range parentFoldersToCheck {
+				err := ds.checkAndDeleteEmptyFolder(parentID)
+				if err != nil {
+					log.Printf("⚠️ 빈 폴더 정리 실패: %v", err)
+				}
+			}
+			log.Printf("✅ 빈 폴더 정리 완료")
+		}()
+	} else if !cleanupEmptyFolders {
+		log.Printf("📂 빈 폴더 정리 건너뜀 (사용자 옵션)")
+	}
+	
 	return deletedCount, nil
 }
 
@@ -1791,4 +3287,68 @@ func FindDuplicates(files []*DriveFile, ds *DriveService) ([][]*DriveFile, error
 	log.Printf("🏁 중복 검사 완료: %d개 파일 처리됨", processedFiles)
 	log.Printf("📊 총 %d개 중복 그룹 발견", len(duplicateGroups))
 	return duplicateGroups, nil
+}
+
+// 저장된 폴더 비교 작업 조회
+func (ds *DriveService) getSavedComparisonTasks() ([]*FolderComparisonTask, error) {
+	rows, err := ds.db.Query(`
+		SELECT id, source_folder_id, target_folder_id, status, current_step,
+		       source_folder_scanned, source_folder_total, target_folder_scanned, target_folder_total,
+		       hashes_calculated, total_hashes_to_calc, duplicates_found, error_message,
+		       created_at, updated_at
+		FROM folder_comparison_tasks
+		WHERE status IN ('pending', 'running', 'paused', 'completed')
+		ORDER BY updated_at DESC
+		LIMIT 10
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("저장된 작업 조회 실패: %v", err)
+	}
+	defer rows.Close()
+
+	var tasks []*FolderComparisonTask
+	for rows.Next() {
+		task := &FolderComparisonTask{}
+		err := rows.Scan(
+			&task.ID, &task.SourceFolderID, &task.TargetFolderID, &task.Status, &task.CurrentStep,
+			&task.SourceFolderScanned, &task.SourceFolderTotal, &task.TargetFolderScanned, &task.TargetFolderTotal,
+			&task.HashesCalculated, &task.TotalHashesToCalc, &task.DuplicatesFound, &task.ErrorMessage,
+			&task.CreatedAt, &task.UpdatedAt,
+		)
+		if err != nil {
+			log.Printf("⚠️ 작업 정보 스캔 실패: %v", err)
+			continue
+		}
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
+}
+
+// 저장된 폴더 비교 작업 모두 삭제
+func (ds *DriveService) clearSavedComparisonTasks() error {
+	tx, err := ds.db.Begin()
+	if err != nil {
+		return fmt.Errorf("트랜잭션 시작 실패: %v", err)
+	}
+	defer tx.Rollback()
+
+	// 관련 테이블들의 데이터 삭제
+	_, err = tx.Exec("DELETE FROM comparison_result_files")
+	if err != nil {
+		return fmt.Errorf("비교 결과 파일 삭제 실패: %v", err)
+	}
+
+	_, err = tx.Exec("DELETE FROM folder_comparison_tasks")
+	if err != nil {
+		return fmt.Errorf("비교 작업 삭제 실패: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("트랜잭션 커밋 실패: %v", err)
+	}
+
+	log.Printf("✅ 모든 저장된 폴더 비교 작업이 삭제됨")
+	return nil
 }
