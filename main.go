@@ -52,6 +52,9 @@ func main() {
 	http.HandleFunc("/remove-duplicate-group", removeDuplicateGroupHandler)
 	http.HandleFunc("/cleanup-deleted-files", cleanupDeletedFilesHandler)
 	http.HandleFunc("/cleanup-empty-folders", cleanupEmptyFoldersHandler)
+	http.HandleFunc("/file-stats", fileStatsHandler)
+	http.HandleFunc("/search-files", searchFilesHandler)
+	http.HandleFunc("/folder-path", folderPathHandler)
 	http.HandleFunc("/settings", settingsHandler)
 	http.HandleFunc("/set-workers", setWorkersHandler)
 	
@@ -920,5 +923,151 @@ func deleteTargetFolderHandler(w http.ResponseWriter, r *http.Request) {
 		"message": fmt.Sprintf("'%s' 폴더 삭제가 백그라운드에서 시작되었습니다", request.FolderName),
 	}
 
+	json.NewEncoder(w).Encode(response)
+}
+
+func fileStatsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	
+	driveService := getGlobalDriveService()
+	if driveService == nil {
+		response := map[string]string{"error": "DriveService가 초기화되지 않았습니다"}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	stats, err := driveService.getFileStatistics()
+	if err != nil {
+		response := map[string]string{"error": "파일 통계 조회 실패: " + err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(stats)
+}
+
+func searchFilesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	
+	var request struct {
+		Query       string   `json:"query"`
+		FileTypes   []string `json:"fileTypes"`
+		LargeFiles  bool     `json:"largeFiles"`
+		Limit       int      `json:"limit"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		response := map[string]string{"error": "잘못된 요청 형식"}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	driveService := getGlobalDriveService()
+	if driveService == nil {
+		response := map[string]string{"error": "DriveService가 초기화되지 않았습니다"}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	if request.Limit == 0 {
+		request.Limit = 100 // 기본값
+	}
+	
+	files, err := driveService.searchFilesAdvanced(request.Query, request.FileTypes, request.LargeFiles, request.Limit)
+	if err != nil {
+		response := map[string]string{"error": "파일 검색 실패: " + err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	response := map[string]interface{}{
+		"files": files,
+		"count": len(files),
+	}
+	
+	json.NewEncoder(w).Encode(response)
+}
+
+func folderPathHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	
+	fileID := r.URL.Query().Get("id")
+	if fileID == "" {
+		http.Error(w, "파일 ID가 필요합니다", http.StatusBadRequest)
+		return
+	}
+	
+	driveService := getGlobalDriveService()
+	if driveService == nil {
+		response := map[string]string{"error": "DriveService가 초기화되지 않았습니다"}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	// API에서 파일 정보 조회하여 상위 폴더 ID 가져오기
+	fileInfo, err := driveService.service.Files.Get(fileID).Fields("id, name, parents, trashed").Do()
+	if err != nil {
+		log.Printf("⚠️ 파일 정보 조회 실패 (%s): %v", fileID, err)
+		response := map[string]interface{}{
+			"fileId": fileID,
+			"status": "deleted",
+			"message": "파일이 삭제되었거나 존재하지 않습니다",
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	// 휴지통에 있는 파일인지 확인
+	if fileInfo.Trashed {
+		response := map[string]interface{}{
+			"fileId": fileID,
+			"status": "trashed",
+			"message": "파일이 휴지통에 있습니다",
+			"name": fileInfo.Name,
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	
+	var folderPath string
+	var parentFolderInfo map[string]interface{}
+	
+	if len(fileInfo.Parents) > 0 {
+		parentID := fileInfo.Parents[0]
+		folderPath = driveService.buildFullPath(parentID)
+		
+		// 상위 폴더 정보도 가져오기
+		parentInfo, err := driveService.service.Files.Get(parentID).Fields("id, name, webViewLink").Do()
+		if err != nil {
+			log.Printf("⚠️ 상위 폴더 정보 조회 실패 (%s): %v", parentID, err)
+			parentFolderInfo = map[string]interface{}{
+				"id": parentID,
+				"name": "알 수 없음",
+				"webViewLink": "",
+			}
+		} else {
+			parentFolderInfo = map[string]interface{}{
+				"id": parentInfo.Id,
+				"name": parentInfo.Name,
+				"webViewLink": parentInfo.WebViewLink,
+			}
+		}
+	} else {
+		folderPath = "/"
+		parentFolderInfo = map[string]interface{}{
+			"id": "",
+			"name": "루트 폴더",
+			"webViewLink": "https://drive.google.com/drive/my-drive",
+		}
+	}
+	
+	response := map[string]interface{}{
+		"fileId": fileID,
+		"status": "exists",
+		"folderPath": folderPath,
+		"parentFolder": parentFolderInfo,
+		"fileName": fileInfo.Name,
+	}
+	
 	json.NewEncoder(w).Encode(response)
 }

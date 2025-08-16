@@ -35,6 +35,12 @@
             <button class="scan-button" onclick="cleanupEmptyFolders()" id="cleanupFoldersBtn" style="background: #795548;">
                 📂 빈 폴더 정리
             </button>
+            <button class="scan-button" onclick="showFileStats()" id="showStatsBtn" style="background: #17a2b8;">
+                📊 파일 통계 보기
+            </button>
+            <button class="scan-button" onclick="showFileExplorer()" id="showExplorerBtn" style="background: #6f42c1;">
+                📁 파일 탐색기
+            </button>
         </div>
         
         <div class="settings-panel">
@@ -138,6 +144,42 @@
         <div id="progress" style="display: none;"></div>
         <div id="results"></div>
         
+        <!-- 파일 통계 대시보드 -->
+        <div id="stats-section" class="duplicate-section" style="display: none;">
+            <h2>📊 드라이브 파일 통계</h2>
+            <div id="file-stats-dashboard"></div>
+        </div>
+        
+        <!-- 파일 탐색기 -->
+        <div id="explorer-section" class="duplicate-section" style="display: none;">
+            <h2>📁 파일 탐색기</h2>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label for="fileSearch" style="display: block; margin-bottom: 5px; font-weight: bold;">🔍 파일 검색:</label>
+                    <input type="text" id="fileSearch" placeholder="파일명, 확장자, 경로로 검색..." 
+                           style="width: 70%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin-right: 10px;">
+                    <button onclick="searchFiles()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
+                        검색
+                    </button>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="margin-right: 20px;">
+                        <input type="checkbox" id="filterImages" style="margin-right: 5px;"> 이미지 파일
+                    </label>
+                    <label style="margin-right: 20px;">
+                        <input type="checkbox" id="filterDocuments" style="margin-right: 5px;"> 문서 파일
+                    </label>
+                    <label style="margin-right: 20px;">
+                        <input type="checkbox" id="filterVideos" style="margin-right: 5px;"> 비디오 파일
+                    </label>
+                    <label style="margin-right: 20px;">
+                        <input type="checkbox" id="filterLargeFiles" style="margin-right: 5px;"> 대용량 파일 (>100MB)
+                    </label>
+                </div>
+            </div>
+            <div id="file-explorer-results"></div>
+        </div>
+
         <div id="duplicates-section" class="duplicate-section" style="display: none;">
             <h2>🔍 발견된 중복 파일 <span class="realtime-indicator">(실시간 업데이트)</span></h2>
             <div id="live-duplicates"></div>

@@ -3150,6 +3150,241 @@ func (ds *DriveService) bulkDeleteFilesWithCleanup(fileIDs []string, cleanupEmpt
 	return deletedCount, nil
 }
 
+type FileStatistics struct {
+	TotalFiles      int                    `json:"totalFiles"`
+	TotalSize       int64                  `json:"totalSize"`
+	FileTypes       map[string]int         `json:"fileTypes"`
+	SizeDistribution map[string]int        `json:"sizeDistribution"`
+	ModifiedDistribution map[string]int    `json:"modifiedDistribution"`
+	TopLargestFiles []*DriveFile          `json:"topLargestFiles"`
+	TopFolders      []FolderSummary       `json:"topFolders"`
+}
+
+type FolderSummary struct {
+	Path      string `json:"path"`
+	FileCount int    `json:"fileCount"`
+	TotalSize int64  `json:"totalSize"`
+}
+
+func (ds *DriveService) getFileStatistics() (*FileStatistics, error) {
+	log.Println("📊 파일 통계 생성 중...")
+	
+	files, err := ds.loadFilesFromDB()
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("파일 데이터가 없습니다. 먼저 파일 스캔을 실행해주세요")
+	}
+	
+	stats := &FileStatistics{
+		TotalFiles:           len(files),
+		FileTypes:           make(map[string]int),
+		SizeDistribution:    make(map[string]int),
+		ModifiedDistribution: make(map[string]int),
+		TopLargestFiles:     make([]*DriveFile, 0),
+	}
+	
+	var totalSize int64
+	folderMap := make(map[string]*FolderSummary)
+	largestFiles := make([]*DriveFile, 0)
+	
+	for _, file := range files {
+		totalSize += file.Size
+		
+		// 파일 타입별 분류
+		extension := getFileExtension(file.Name)
+		if extension == "" {
+			extension = "기타"
+		}
+		stats.FileTypes[extension]++
+		
+		// 크기별 분포
+		sizeCategory := getSizeCategory(file.Size)
+		stats.SizeDistribution[sizeCategory]++
+		
+		// 수정일별 분포
+		modifiedCategory := getModifiedCategory(file.ModifiedTime)
+		stats.ModifiedDistribution[modifiedCategory]++
+		
+		// 폴더별 통계
+		if file.Path != "" {
+			if summary, exists := folderMap[file.Path]; exists {
+				summary.FileCount++
+				summary.TotalSize += file.Size
+			} else {
+				folderMap[file.Path] = &FolderSummary{
+					Path:      file.Path,
+					FileCount: 1,
+					TotalSize: file.Size,
+				}
+			}
+		}
+		
+		// 대용량 파일 추적
+		if file.Size > 50*1024*1024 { // 50MB 이상
+			largestFiles = append(largestFiles, file)
+		}
+	}
+	
+	stats.TotalSize = totalSize
+	
+	// 가장 큰 파일들 정렬 (상위 10개)
+	if len(largestFiles) > 1 {
+		for i := 0; i < len(largestFiles)-1; i++ {
+			for j := i + 1; j < len(largestFiles); j++ {
+				if largestFiles[i].Size < largestFiles[j].Size {
+					largestFiles[i], largestFiles[j] = largestFiles[j], largestFiles[i]
+				}
+			}
+		}
+	}
+	
+	if len(largestFiles) > 10 {
+		stats.TopLargestFiles = largestFiles[:10]
+	} else {
+		stats.TopLargestFiles = largestFiles
+	}
+	
+	// 상위 폴더들 정렬 (파일 수 기준 상위 10개)
+	for _, summary := range folderMap {
+		stats.TopFolders = append(stats.TopFolders, *summary)
+	}
+	
+	if len(stats.TopFolders) > 1 {
+		for i := 0; i < len(stats.TopFolders)-1; i++ {
+			for j := i + 1; j < len(stats.TopFolders); j++ {
+				if stats.TopFolders[i].FileCount < stats.TopFolders[j].FileCount {
+					stats.TopFolders[i], stats.TopFolders[j] = stats.TopFolders[j], stats.TopFolders[i]
+				}
+			}
+		}
+	}
+	
+	if len(stats.TopFolders) > 10 {
+		stats.TopFolders = stats.TopFolders[:10]
+	}
+	
+	log.Printf("✅ 파일 통계 생성 완료: %d개 파일, %s", stats.TotalFiles, formatFileSize(stats.TotalSize))
+	return stats, nil
+}
+
+func (ds *DriveService) searchFilesAdvanced(query string, fileTypes []string, largeFiles bool, limit int) ([]*DriveFile, error) {
+	log.Printf("🔍 고급 파일 검색: 쿼리='%s', 타입=%v, 대용량=%v, 제한=%d", query, fileTypes, largeFiles, limit)
+	
+	files, err := ds.loadFilesFromDB()
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("파일 데이터가 없습니다. 먼저 파일 스캔을 실행해주세요")
+	}
+	
+	var results []*DriveFile
+	queryLower := strings.ToLower(query)
+	
+	for _, file := range files {
+		// 기본 검색 조건
+		if query != "" {
+			nameLower := strings.ToLower(file.Name)
+			pathLower := strings.ToLower(file.Path)
+			
+			if !strings.Contains(nameLower, queryLower) && !strings.Contains(pathLower, queryLower) {
+				continue
+			}
+		}
+		
+		// 파일 타입 필터
+		if len(fileTypes) > 0 {
+			extension := getFileExtension(file.Name)
+			category := getFileCategory(extension)
+			
+			matched := false
+			for _, filterType := range fileTypes {
+				if category == filterType {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		
+		// 대용량 파일 필터
+		if largeFiles && file.Size < 100*1024*1024 { // 100MB 미만
+			continue
+		}
+		
+		results = append(results, file)
+		
+		if len(results) >= limit {
+			break
+		}
+	}
+	
+	log.Printf("✅ 검색 완료: %d개 파일 발견", len(results))
+	return results, nil
+}
+
+func getFileExtension(filename string) string {
+	idx := strings.LastIndex(filename, ".")
+	if idx == -1 || idx == len(filename)-1 {
+		return ""
+	}
+	return strings.ToLower(filename[idx+1:])
+}
+
+func getFileCategory(extension string) string {
+	imageExts := map[string]bool{"jpg": true, "jpeg": true, "png": true, "gif": true, "bmp": true, "svg": true, "webp": true}
+	videoExts := map[string]bool{"mp4": true, "avi": true, "mov": true, "wmv": true, "flv": true, "webm": true, "mkv": true}
+	docExts := map[string]bool{"pdf": true, "doc": true, "docx": true, "txt": true, "rtf": true, "odt": true, "xls": true, "xlsx": true, "ppt": true, "pptx": true}
+	
+	if imageExts[extension] {
+		return "images"
+	}
+	if videoExts[extension] {
+		return "videos"
+	}
+	if docExts[extension] {
+		return "documents"
+	}
+	return "other"
+}
+
+func getSizeCategory(size int64) string {
+	if size < 1024*1024 { // < 1MB
+		return "1MB 미만"
+	} else if size < 10*1024*1024 { // < 10MB
+		return "1-10MB"
+	} else if size < 100*1024*1024 { // < 100MB
+		return "10-100MB"
+	} else if size < 1024*1024*1024 { // < 1GB
+		return "100MB-1GB"
+	} else {
+		return "1GB 이상"
+	}
+}
+
+func getModifiedCategory(modifiedTime string) string {
+	if modifiedTime == "" {
+		return "알 수 없음"
+	}
+	
+	// RFC3339 형태의 시간을 파싱
+	parsedTime, err := time.Parse(time.RFC3339, modifiedTime)
+	if err != nil {
+		return "알 수 없음"
+	}
+	
+	now := time.Now()
+	diff := now.Sub(parsedTime)
+	
+	if diff.Hours() < 24*7 { // 1주일 이내
+		return "최근 1주일"
+	} else if diff.Hours() < 24*30 { // 1개월 이내
+		return "최근 1개월"
+	} else if diff.Hours() < 24*365 { // 1년 이내
+		return "최근 1년"
+	} else {
+		return "1년 이상"
+	}
+}
+
 func FindDuplicates(files []*DriveFile, ds *DriveService) ([][]*DriveFile, error) {
 	// 기존 진행 상태 확인
 	progress, err := ds.loadProgress()

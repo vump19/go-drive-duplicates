@@ -194,6 +194,289 @@ function loadSinglePath(fileId) {
         });
 }
 
+function loadFolderPath(fileId) {
+    console.log('📁 폴더 경로 조회 시작:', fileId);
+    
+    fetch('/folder-path?id=' + encodeURIComponent(fileId))
+        .then(response => response.json())
+        .then(data => {
+            console.log('📁 폴더 경로 조회 결과:', data);
+            
+            if (data.status === 'exists') {
+                // 폴더 정보를 모달로 표시
+                showFolderInfo(data);
+            } else if (data.status === 'deleted') {
+                alert('❌ 파일이 삭제되었거나 존재하지 않습니다.');
+            } else if (data.status === 'trashed') {
+                alert('🗑️ 파일이 휴지통에 있습니다: ' + data.name);
+            } else {
+                alert('⚠️ 폴더 정보를 조회할 수 없습니다.');
+            }
+        })
+        .catch(error => {
+            console.error('폴더 경로 조회 오류:', error);
+            alert('❌ 폴더 정보 조회 중 오류가 발생했습니다: ' + error);
+        });
+}
+
+function showFolderInfo(data) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
+    
+    content.innerHTML = `
+        <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+            📁 폴더 정보
+        </h3>
+        
+        <div style="margin-bottom: 20px;">
+            <p><strong>📄 파일명:</strong></p>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px;">
+                ${data.fileName}
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <p><strong>📁 폴더 경로:</strong></p>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px; font-family: monospace; word-break: break-all;">
+                ${data.folderPath}
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <p><strong>📂 상위 폴더:</strong></p>
+            <div style="background: #e9ecef; padding: 15px; border-radius: 5px; margin-top: 5px;">
+                <div style="margin-bottom: 10px;">
+                    <strong>폴더명:</strong> ${data.parentFolder.name}
+                </div>
+                ${data.parentFolder.webViewLink ? `
+                    <div style="margin-bottom: 10px;">
+                        <a href="${data.parentFolder.webViewLink}" target="_blank" 
+                           style="background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px; display: inline-block; margin-right: 10px;">
+                            📁 Google Drive에서 폴더 열기
+                        </a>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">
+                            <strong>📋 폴더 간 중복 파일 삭제에 활용:</strong>
+                        </p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button onclick="setAsSourceFolder('${data.parentFolder.webViewLink}')" 
+                                    style="background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                                📁 기준 폴더로 설정
+                            </button>
+                            <button onclick="setAsTargetFolder('${data.parentFolder.webViewLink}')" 
+                                    style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                                🎯 대상 폴더로 설정
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="closeFolderModal()" 
+                    style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                닫기
+            </button>
+        </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // 모달 외부 클릭 시 닫기
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeFolderModal();
+        }
+    });
+    
+    // ESC 키로 닫기
+    const escListener = function(e) {
+        if (e.key === 'Escape') {
+            closeFolderModal();
+            document.removeEventListener('keydown', escListener);
+        }
+    };
+    document.addEventListener('keydown', escListener);
+    
+    // 전역에서 접근할 수 있도록 modal 저장
+    window.currentFolderModal = modal;
+}
+
+function closeFolderModal() {
+    if (window.currentFolderModal) {
+        document.body.removeChild(window.currentFolderModal);
+        window.currentFolderModal = null;
+    }
+}
+
+function setAsSourceFolder(folderUrl) {
+    console.log('📁 기준 폴더 설정:', folderUrl);
+    
+    // 기준 폴더 URL 입력 필드에 설정
+    const sourceFolderInput = document.getElementById('sourceFolderUrl');
+    if (sourceFolderInput) {
+        sourceFolderInput.value = folderUrl;
+        sourceFolderInput.style.background = '#d4edda';
+        
+        // 2초 후 배경색 원래대로 복구
+        setTimeout(() => {
+            sourceFolderInput.style.background = '';
+        }, 2000);
+        
+        // 모달 닫기
+        closeFolderModal();
+        
+        // 폴더 비교 섹션으로 스크롤
+        const folderComparisonSection = document.getElementById('folder-comparison-section');
+        if (folderComparisonSection) {
+            folderComparisonSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // 성공 메시지 표시
+        showTemporaryMessage('✅ 기준 폴더로 설정되었습니다!', '#28a745');
+    } else {
+        alert('❌ 기준 폴더 입력 필드를 찾을 수 없습니다.');
+    }
+}
+
+function setAsTargetFolder(folderUrl) {
+    console.log('🎯 대상 폴더 설정:', folderUrl);
+    
+    // 대상 폴더 URL 입력 필드에 설정
+    const targetFolderInput = document.getElementById('targetFolderUrl');
+    if (targetFolderInput) {
+        targetFolderInput.value = folderUrl;
+        targetFolderInput.style.background = '#f8d7da';
+        
+        // 2초 후 배경색 원래대로 복구
+        setTimeout(() => {
+            targetFolderInput.style.background = '';
+        }, 2000);
+        
+        // 모달 닫기
+        closeFolderModal();
+        
+        // 폴더 비교 섹션으로 스크롤
+        const folderComparisonSection = document.getElementById('folder-comparison-section');
+        if (folderComparisonSection) {
+            folderComparisonSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // 성공 메시지 표시
+        showTemporaryMessage('✅ 대상 폴더로 설정되었습니다!', '#dc3545');
+    } else {
+        alert('❌ 대상 폴더 입력 필드를 찾을 수 없습니다.');
+    }
+}
+
+function showTemporaryMessage(message, color) {
+    // 기존 메시지가 있으면 제거
+    const existingMsg = document.getElementById('temp-message');
+    if (existingMsg) {
+        existingMsg.remove();
+    }
+    
+    // 새 메시지 생성
+    const messageDiv = document.createElement('div');
+    messageDiv.id = 'temp-message';
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${color};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        font-weight: bold;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: slideIn 0.3s ease-out;
+    `;
+    messageDiv.textContent = message;
+    
+    // CSS 애니메이션 추가
+    if (!document.getElementById('temp-message-style')) {
+        const style = document.createElement('style');
+        style.id = 'temp-message-style';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(messageDiv);
+    
+    // 3초 후 슬라이드아웃 애니메이션과 함께 제거
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+function setFolderFromPath(fileId, type) {
+    console.log(`📁 파일 ${fileId}의 폴더를 ${type}로 설정 중...`);
+    
+    // 폴더 경로 정보를 가져와서 설정
+    fetch('/folder-path?id=' + encodeURIComponent(fileId))
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'exists' && data.parentFolder && data.parentFolder.webViewLink) {
+                if (type === 'source') {
+                    setAsSourceFolder(data.parentFolder.webViewLink);
+                } else if (type === 'target') {
+                    setAsTargetFolder(data.parentFolder.webViewLink);
+                }
+            } else if (data.status === 'deleted') {
+                alert('❌ 파일이 삭제되었거나 존재하지 않습니다.');
+            } else if (data.status === 'trashed') {
+                alert('🗑️ 파일이 휴지통에 있습니다.');
+            } else {
+                alert('⚠️ 폴더 정보를 조회할 수 없습니다.');
+            }
+        })
+        .catch(error => {
+            console.error('폴더 경로 조회 오류:', error);
+            alert('❌ 폴더 정보 조회 중 오류가 발생했습니다: ' + error);
+        });
+}
+
 function updateParents() {
     if (!confirm('데이터베이스의 모든 파일에 대해 경로 정보를 업데이트합니다. 시간이 오래 걸릴 수 있습니다. 계속하시겠습니까?')) {
         return;
@@ -708,10 +991,17 @@ function displayLiveDuplicates(duplicates, pageInfo) {
             
             // 경로 정보 표시
             if (file.path && file.path !== '' && file.path !== '경로 미확인') {
-                html += '📁 경로: ' + file.path;
+                html += '📁 경로: ' + file.path + ' ';
+                html += '<button onclick="loadFolderPath(\'' + file.id + '\')" style="font-size: 10px; padding: 2px 5px; margin-left: 5px; background: #28a745; color: white; border: none; border-radius: 2px;">📁 폴더 열기</button>';
+                // 폴더 설정 버튼들 추가
+                html += '<br><div style="margin-top: 5px;">';
+                html += '<button onclick="setFolderFromPath(\'' + file.id + '\', \'source\')" style="font-size: 9px; padding: 1px 4px; margin-right: 3px; background: #007bff; color: white; border: none; border-radius: 2px;">📁→기준</button>';
+                html += '<button onclick="setFolderFromPath(\'' + file.id + '\', \'target\')" style="font-size: 9px; padding: 1px 4px; background: #dc3545; color: white; border: none; border-radius: 2px;">🎯→대상</button>';
+                html += '</div>';
             } else {
                 html += '📁 경로: <span id="path-' + file.id + '" style="color: #666; font-style: italic;">경로 미확인</span> ';
-                html += '<button onclick="loadSinglePath(\'' + file.id + '\')" style="font-size: 10px; padding: 2px 5px;">경로 조회</button>';
+                html += '<button onclick="loadSinglePath(\'' + file.id + '\')" style="font-size: 10px; padding: 2px 5px;">경로 조회</button> ';
+                html += '<button onclick="loadFolderPath(\'' + file.id + '\')" style="font-size: 10px; padding: 2px 5px; margin-left: 3px; background: #28a745; color: white; border: none; border-radius: 2px;">📁 폴더 열기</button>';
             }
             
             html += '<br>💾 크기: ' + formatFileSize(file.size);
@@ -897,6 +1187,316 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 파일 통계 표시 함수
+function showFileStats() {
+    console.log('📊 파일 통계 요청');
+    
+    document.getElementById('stats-section').style.display = 'block';
+    document.getElementById('explorer-section').style.display = 'none';
+    document.getElementById('duplicates-section').style.display = 'none';
+    
+    const dashboard = document.getElementById('file-stats-dashboard');
+    dashboard.innerHTML = '<div style="text-align: center; padding: 20px;">📊 통계 로딩 중...</div>';
+    
+    fetch('/file-stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                dashboard.innerHTML = `<div style="color: red; padding: 20px;">❌ ${data.error}</div>`;
+                return;
+            }
+            
+            displayFileStats(data);
+        })
+        .catch(error => {
+            console.error('통계 조회 오류:', error);
+            dashboard.innerHTML = `<div style="color: red; padding: 20px;">❌ 통계 조회 중 오류 발생: ${error}</div>`;
+        });
+}
+
+function displayFileStats(stats) {
+    const dashboard = document.getElementById('file-stats-dashboard');
+    
+    let html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <!-- 기본 통계 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff;">
+                <h3>📈 기본 통계</h3>
+                <p><strong>총 파일 수:</strong> ${stats.totalFiles.toLocaleString()}개</p>
+                <p><strong>총 용량:</strong> ${formatFileSize(stats.totalSize)}</p>
+                <p><strong>평균 파일 크기:</strong> ${formatFileSize(Math.round(stats.totalSize / stats.totalFiles))}</p>
+            </div>
+            
+            <!-- 파일 타입별 분포 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745;">
+                <h3>📄 파일 확장자 TOP 10</h3>
+                <div>`;
+    
+    // 파일 타입 정렬
+    const sortedTypes = Object.entries(stats.fileTypes)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10);
+    
+    sortedTypes.forEach(([type, count]) => {
+        const percentage = ((count / stats.totalFiles) * 100).toFixed(1);
+        html += `
+            <div style="margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>.${type}</span>
+                    <span>${count}개 (${percentage}%)</span>
+                </div>
+                <div style="background: #e9ecef; height: 6px; border-radius: 3px;">
+                    <div style="background: #28a745; height: 100%; width: ${percentage}%; border-radius: 3px;"></div>
+                </div>
+            </div>`;
+    });
+    
+    html += `</div></div>
+            
+            <!-- 크기별 분포 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h3>📊 크기별 분포</h3>
+                <div>`;
+    
+    Object.entries(stats.sizeDistribution).forEach(([category, count]) => {
+        const percentage = ((count / stats.totalFiles) * 100).toFixed(1);
+        html += `
+            <div style="margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>${category}</span>
+                    <span>${count}개 (${percentage}%)</span>
+                </div>
+                <div style="background: #e9ecef; height: 6px; border-radius: 3px;">
+                    <div style="background: #ffc107; height: 100%; width: ${percentage}%; border-radius: 3px;"></div>
+                </div>
+            </div>`;
+    });
+    
+    html += `</div></div>
+            
+            <!-- 수정일별 분포 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545;">
+                <h3>📅 수정일별 분포</h3>
+                <div>`;
+    
+    Object.entries(stats.modifiedDistribution).forEach(([category, count]) => {
+        const percentage = ((count / stats.totalFiles) * 100).toFixed(1);
+        html += `
+            <div style="margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>${category}</span>
+                    <span>${count}개 (${percentage}%)</span>
+                </div>
+                <div style="background: #e9ecef; height: 6px; border-radius: 3px;">
+                    <div style="background: #dc3545; height: 100%; width: ${percentage}%; border-radius: 3px;"></div>
+                </div>
+            </div>`;
+    });
+    
+    html += `</div></div></div>`;
+    
+    // 대용량 파일 목록
+    if (stats.topLargestFiles && stats.topLargestFiles.length > 0) {
+        html += `
+            <div style="margin-top: 20px; background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #856404;">
+                <h3>💾 대용량 파일 TOP ${stats.topLargestFiles.length}</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">파일명</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">크기</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">경로</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        
+        stats.topLargestFiles.forEach(file => {
+            html += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">
+                        <a href="${file.webViewLink || '#'}" target="_blank" style="color: #007bff; text-decoration: none;">
+                            ${file.name}
+                        </a>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">${formatFileSize(file.size)}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #666;">
+                        ${file.path || '/'}
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">
+                        <button onclick="deleteFile('${file.id}', '${file.name}')" 
+                                style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                            삭제
+                        </button>
+                    </td>
+                </tr>`;
+        });
+        
+        html += `</tbody></table></div></div>`;
+    }
+    
+    // 상위 폴더 목록
+    if (stats.topFolders && stats.topFolders.length > 0) {
+        html += `
+            <div style="margin-top: 20px; background: #d1ecf1; padding: 20px; border-radius: 8px; border-left: 4px solid #0c5460;">
+                <h3>📁 파일이 많은 폴더 TOP ${stats.topFolders.length}</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">폴더 경로</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">파일 수</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">총 크기</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        
+        stats.topFolders.forEach(folder => {
+            html += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 12px;">
+                        ${folder.path || '/'}
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">${folder.fileCount}개</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">${formatFileSize(folder.totalSize)}</td>
+                </tr>`;
+        });
+        
+        html += `</tbody></table></div></div>`;
+    }
+    
+    dashboard.innerHTML = html;
+}
+
+// 파일 탐색기 표시 함수
+function showFileExplorer() {
+    console.log('📁 파일 탐색기 열기');
+    
+    document.getElementById('stats-section').style.display = 'none';
+    document.getElementById('explorer-section').style.display = 'block';
+    document.getElementById('duplicates-section').style.display = 'none';
+    
+    // 탐색기 결과 초기화
+    document.getElementById('file-explorer-results').innerHTML = 
+        '<div style="text-align: center; padding: 20px; color: #666;">위의 검색 조건을 설정하고 검색 버튼을 클릭하세요.</div>';
+}
+
+// 파일 검색 함수
+function searchFiles() {
+    const query = document.getElementById('fileSearch').value.trim();
+    const fileTypes = [];
+    
+    if (document.getElementById('filterImages').checked) {
+        fileTypes.push('images');
+    }
+    if (document.getElementById('filterDocuments').checked) {
+        fileTypes.push('documents');
+    }
+    if (document.getElementById('filterVideos').checked) {
+        fileTypes.push('videos');
+    }
+    
+    const largeFiles = document.getElementById('filterLargeFiles').checked;
+    
+    console.log('🔍 파일 검색:', { query, fileTypes, largeFiles });
+    
+    const resultsDiv = document.getElementById('file-explorer-results');
+    resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">🔍 검색 중...</div>';
+    
+    fetch('/search-files', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            query: query,
+            fileTypes: fileTypes,
+            largeFiles: largeFiles,
+            limit: 200
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            resultsDiv.innerHTML = `<div style="color: red; padding: 20px;">❌ ${data.error}</div>`;
+            return;
+        }
+        
+        displaySearchResults(data.files, data.count);
+    })
+    .catch(error => {
+        console.error('검색 오류:', error);
+        resultsDiv.innerHTML = `<div style="color: red; padding: 20px;">❌ 검색 중 오류 발생: ${error}</div>`;
+    });
+}
+
+function displaySearchResults(files, totalCount) {
+    const resultsDiv = document.getElementById('file-explorer-results');
+    
+    if (!files || files.length === 0) {
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">검색 결과가 없습니다.</div>';
+        return;
+    }
+    
+    let html = `
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h4>🔍 검색 결과: ${totalCount}개 파일 발견</h4>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">파일명</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">크기</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">확장자</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">경로</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">수정일</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #dee2e6;">액션</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+    
+    files.forEach(file => {
+        const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '없음';
+        const modifiedDate = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString('ko-KR') : '알 수 없음';
+        
+        html += `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">
+                    <a href="${file.webViewLink || '#'}" target="_blank" style="color: #007bff; text-decoration: none;">
+                        ${file.name}
+                    </a>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">${formatFileSize(file.size)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">.${extension}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #666;">
+                    ${file.path || '/'}
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 12px;">
+                    ${modifiedDate}
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">
+                    <button onclick="deleteFile('${file.id}', '${file.name}')" 
+                            style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                        삭제
+                    </button>
+                </td>
+            </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    
+    if (totalCount >= 200) {
+        html += '<div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 20px; border-left: 4px solid #ffc107;">';
+        html += '<p><strong>ℹ️ 알림:</strong> 검색 결과가 200개로 제한되었습니다. 더 구체적인 검색어를 사용해보세요.</p>';
+        html += '</div>';
+    }
+    
+    resultsDiv.innerHTML = html;
 }
 
 // 폴더 비교 관련 함수들
