@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive 중복 파일 관리</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-search-plus"></i> Google Drive 중복 파일 관리</h1>
+        </header>
+
+        <nav class="nav">
+            <div class="nav-tabs">
+                <button class="tab-button active" onclick="showTab('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i> 대시보드
+                </button>
+                <button class="tab-button" onclick="showTab('scan')">
+                    <i class="fas fa-search"></i> 파일 스캔
+                </button>
+                <button class="tab-button" onclick="showTab('duplicates')">
+                    <i class="fas fa-copy"></i> 중복 파일
+                </button>
+                <button class="tab-button" onclick="showTab('cleanup')">
+                    <i class="fas fa-trash-alt"></i> 파일 정리
+                </button>
+                <button class="tab-button" onclick="showTab('settings')">
+                    <i class="fas fa-cog"></i> 설정
+                </button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="dashboard">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-file"></i></div>
+                            <div class="stat-content">
+                                <h3>총 파일</h3>
+                                <p id="total-files" class="stat-value">-</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-clone"></i></div>
+                            <div class="stat-content">
+                                <h3>중복 그룹</h3>
+                                <p id="duplicate-groups" class="stat-value">-</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-hdd"></i></div>
+                            <div class="stat-content">
+                                <h3>낭비 공간</h3>
+                                <p id="wasted-space" class="stat-value">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="system-status">
+                        <h3><i class="fas fa-heartbeat"></i> 시스템 상태</h3>
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <span class="status-label">서버</span>
+                                <span id="server-status" class="status-value checking">확인 중...</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">데이터베이스</span>
+                                <span id="db-status" class="status-value checking">확인 중...</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">저장소</span>
+                                <span id="storage-status" class="status-value checking">확인 중...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Scan Tab -->
+            <div id="scan" class="tab-content">
+                <div class="scan-section">
+                    <h3><i class="fas fa-search"></i> 파일 스캔</h3>
+                    <div class="action-buttons">
+                        <button id="start-scan-btn" class="btn btn-primary" onclick="startFileScan()">
+                            <i class="fas fa-play"></i> 전체 스캔 시작
+                        </button>
+                        <button id="calculate-hashes-btn" class="btn btn-secondary" onclick="calculateHashes()">
+                            <i class="fas fa-hashtag"></i> 해시 계산
+                        </button>
+                    </div>
+                    <div id="scan-progress" class="progress-section">
+                        <p>스캔 정보가 없습니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Duplicates Tab -->
+            <div id="duplicates" class="tab-content">
+                <div class="duplicates-section">
+                    <h3><i class="fas fa-copy"></i> 중복 파일 관리</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="findDuplicates()">
+                            <i class="fas fa-search"></i> 중복 파일 찾기
+                        </button>
+                        <button class="btn btn-info" onclick="refreshDuplicates()">
+                            <i class="fas fa-sync"></i> 새로고침
+                        </button>
+                    </div>
+                    <div id="duplicate-groups-container" class="groups-container">
+                        <p>중복 그룹을 불러오려면 '중복 파일 찾기'를 클릭하세요.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cleanup Tab -->
+            <div id="cleanup" class="tab-content">
+                <div class="cleanup-section">
+                    <h3><i class="fas fa-trash-alt"></i> 파일 정리</h3>
+                    <div class="cleanup-actions">
+                        <div class="action-group">
+                            <h4>특정 파일 삭제</h4>
+                            <textarea id="file-ids-input" placeholder="파일 ID를 한 줄에 하나씩 입력하세요"></textarea>
+                            <button class="btn btn-danger" onclick="deleteSpecificFiles()">
+                                <i class="fas fa-trash"></i> 파일 삭제
+                            </button>
+                        </div>
+                        <div class="action-group">
+                            <h4>빈 폴더 정리</h4>
+                            <button class="btn btn-warning" onclick="cleanupEmptyFolders()">
+                                <i class="fas fa-folder-minus"></i> 빈 폴더 삭제
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <div class="settings-section">
+                    <h3><i class="fas fa-cog"></i> 설정</h3>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label for="worker-count">워커 수</label>
+                            <input type="number" id="worker-count" value="4" min="1" max="16">
+                        </div>
+                        <div class="form-group">
+                            <label for="batch-size">배치 크기</label>
+                            <input type="number" id="batch-size" value="100" min="10" max="1000">
+                        </div>
+                        <div class="form-group">
+                            <label>API Base URL</label>
+                            <p id="api-base-url" class="readonly-field">-</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="applySettings()">
+                            <i class="fas fa-save"></i> 설정 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification hidden">
+        <span id="notification-message"></span>
+        <button onclick="hideNotification()" class="notification-close">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <div id="loading-message" class="loading-message">처리 중...</div>
+    </div>
+
+    <!-- Group Details Modal -->
+    <div id="group-details-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeGroupDetailsModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-copy"></i> 중복 그룹 상세 정보</h2>
+                <button class="modal-close" onclick="closeGroupDetailsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="group-details-content">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeGroupDetailsModal()">닫기</button>
+                <button class="btn btn-danger" id="delete-group-btn" onclick="deleteCurrentGroup()">그룹 삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./js/api.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+</html>

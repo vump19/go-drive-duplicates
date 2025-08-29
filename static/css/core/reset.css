@@ -1,0 +1,402 @@
+/**
+ * 현대적인 CSS 리셋
+ * 브라우저 기본 스타일을 정규화하고 일관된 베이스라인 제공
+ */
+
+/* === Box Sizing === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* === 기본 여백 제거 === */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* === HTML 및 Body === */
+html {
+  /* 1rem = 16px 기준 설정 */
+  font-size: 16px;
+  /* 스크롤 동작 개선 */
+  scroll-behavior: smooth;
+  /* 텍스트 크기 조정 방지 (iOS) */
+  -webkit-text-size-adjust: 100%;
+  /* 탭 하이라이트 제거 (iOS) */
+  -webkit-tap-highlight-color: transparent;
+  /* 부드러운 폰트 렌더링 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  /* 텍스트 렌더링 최적화 */
+  text-rendering: optimizeLegibility;
+  /* 하이픈 처리 */
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto;
+  /* 스크롤바 스타일링 (Webkit) */
+  scrollbar-gutter: stable;
+}
+
+/* === 제목 === */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+h1 { font-size: var(--text-4xl); }
+h2 { font-size: var(--text-3xl); }
+h3 { font-size: var(--text-2xl); }
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
+
+/* === 문단 === */
+p {
+  margin-bottom: var(--spacing-4);
+  line-height: var(--leading-relaxed);
+}
+
+/* === 링크 === */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--duration-150) var(--ease-in-out);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* === 목록 === */
+ul, ol {
+  list-style: none;
+}
+
+li {
+  margin-bottom: var(--spacing-1);
+}
+
+/* 의미 있는 목록에는 기본 스타일 복원 */
+.prose ul,
+.content ul,
+article ul {
+  list-style-type: disc;
+  padding-left: var(--spacing-6);
+}
+
+.prose ol,
+.content ol,
+article ol {
+  list-style-type: decimal;
+  padding-left: var(--spacing-6);
+}
+
+/* === 이미지 및 미디어 === */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+img {
+  /* 이미지 드래그 방지 */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  /* 이미지 선택 방지 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* === 폼 요소 === */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+  /* 터치 디바이스에서 버튼 스타일 개선 */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input,
+textarea,
+select {
+  /* 모바일에서 줌 방지 */
+  font-size: var(--text-base);
+}
+
+input[type="search"] {
+  /* Safari 검색 필드 스타일 제거 */
+  -webkit-appearance: none;
+}
+
+/* 체크박스와 라디오 버튼 크기 정규화 */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1em;
+  height: 1em;
+}
+
+/* === 테이블 === */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+th {
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  background-color: var(--bg-tertiary);
+}
+
+/* === 인용문 === */
+blockquote {
+  margin: var(--spacing-6) 0;
+  padding-left: var(--spacing-4);
+  border-left: 4px solid var(--color-primary);
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* === 코드 === */
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+code {
+  padding: var(--spacing-1) var(--spacing-2);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+pre {
+  padding: var(--spacing-4);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  line-height: var(--leading-relaxed);
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+kbd {
+  padding: var(--spacing-1) var(--spacing-2);
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  font-size: 0.75em;
+  font-weight: var(--font-medium);
+}
+
+/* === 수평선 === */
+hr {
+  height: 0;
+  color: inherit;
+  border-top: 1px solid var(--border-primary);
+  margin: var(--spacing-8) 0;
+}
+
+/* === 텍스트 선택 === */
+::selection {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-900);
+}
+
+::-moz-selection {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-900);
+}
+
+/* === 스크롤바 스타일링 (Webkit) === */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* === 포커스 스타일 === */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* === 숨김 클래스 === */
+.hidden {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* === 접근성 개선 === */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* === 인쇄 스타일 === */
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+
+  pre {
+    white-space: pre-wrap !important;
+  }
+
+  pre,
+  blockquote {
+    border: 1px solid #999;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr,
+  img {
+    page-break-inside: avoid;
+  }
+
+  p,
+  h2,
+  h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}
+
+/* === 모바일 최적화 === */
+@media (max-width: 768px) {
+  html {
+    /* 모바일에서 텍스트 크기 조정 허용 */
+    -webkit-text-size-adjust: none;
+  }
+  
+  body {
+    /* 모바일에서 줄 간격 조정 */
+    line-height: var(--leading-relaxed);
+  }
+}
+
+/* === 고대비 모드 지원 === */
+@media (prefers-contrast: high) {
+  :root {
+    --border-primary: currentColor;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-xl: none;
+  }
+}

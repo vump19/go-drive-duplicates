@@ -5,300 +5,235 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive 중복 파일 검사기</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🔍 Google Drive 중복 파일 검사기</h1>
-            <p>구글 드라이브의 중복 파일을 찾아 비교할 수 있습니다.</p>
-        </div>
-        
-        <div class="button-group">
-            <button class="scan-button" onclick="scanDuplicates()" id="scanBtn">
-                중복 파일 검사 시작
-            </button>
-            <button class="scan-button secondary" onclick="resumeScan()" id="resumeBtn" style="display: none;">
-                저장된 작업 재개
-            </button>
-            <button class="scan-button danger" onclick="resetData()" id="resetBtn" style="display: none;">
-                모든 데이터 삭제
-            </button>
-            <button class="scan-button" onclick="manualRefresh()" id="refreshBtn" style="background: #FF9800;">
-                🔄 중복 파일 새로고침
-            </button>
-            <button class="scan-button" onclick="updateParents()" id="updateParentsBtn" style="background: #9C27B0;">
-                📁 경로 정보 업데이트
-            </button>
-            <button class="scan-button" onclick="cleanupDeletedFiles()" id="cleanupBtn" style="background: #FF5722;">
-                🧹 삭제된 파일 정리
-            </button>
-            <button class="scan-button" onclick="cleanupEmptyFolders()" id="cleanupFoldersBtn" style="background: #795548;">
-                📂 빈 폴더 정리
-            </button>
-            <button class="scan-button" onclick="showFileStats()" id="showStatsBtn" style="background: #17a2b8;">
-                📊 파일 통계 보기
-            </button>
-            <button class="scan-button" onclick="showFileExplorer()" id="showExplorerBtn" style="background: #6f42c1;">
-                📁 파일 탐색기
-            </button>
-        </div>
-        
-        <div class="settings-panel">
-            <h3>⚙️ 성능 설정</h3>
-            
-            <!-- 중복 파일 검사용 설정 -->
-            <div class="setting-item">
-                <div class="setting-label">병렬 작업 개수 (중복 파일 검사):</div>
-                <div class="setting-controls">
-                    <span>1</span>
-                    <input type="range" id="duplicateWorkerSlider" class="worker-slider" min="1" max="20" value="3">
-                    <span>20</span>
-                    <div class="worker-value" id="duplicateWorkerValue">3</div>
-                    <button class="apply-btn" id="applyDuplicateBtn" onclick="applyDuplicateWorkerSettings()">적용</button>
-                    <div class="recommended-badge" id="duplicateRecommendedBadge" style="display: none;">권장</div>
-                </div>
-            </div>
-            
-            <!-- 해시 계산용 설정 -->
-            <div class="setting-item" style="margin-top: 15px;">
-                <div class="setting-label">병렬 작업 개수 (해시 계산 워커):</div>
-                <div class="setting-controls">
-                    <div class="worker-counter">
-                        <button type="button" id="workerDecreaseBtn" onclick="decreaseWorkers()" 
-                                style="width: 30px; height: 30px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; border-radius: 3px;">−</button>
-                        <div class="worker-value" id="workerValue" style="margin: 0 15px; font-size: 18px; font-weight: bold; min-width: 30px; text-align: center;">5</div>
-                        <button type="button" id="workerIncreaseBtn" onclick="increaseWorkers()" 
-                                style="width: 30px; height: 30px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; border-radius: 3px;">+</button>
+        <!-- Header -->
+        <header class="header">
+            <h1>Google Drive 중복 파일 검사기</h1>
+            <p class="subtitle">Clean Architecture v1.0.0</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="tab-button active" onclick="showTab('dashboard')">대시보드</button>
+            <button class="tab-button" onclick="showTab('scan')">파일 스캔</button>
+            <button class="tab-button" onclick="showTab('duplicates')">중복 파일</button>
+            <button class="tab-button" onclick="showTab('cleanup')">파일 정리</button>
+            <button class="tab-button" onclick="showTab('settings')">설정</button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                <!-- System Status -->
+                <div class="card">
+                    <h3>시스템 상태</h3>
+                    <div class="status-indicators">
+                        <div class="status-item">
+                            <span class="status-label">서버:</span>
+                            <span id="server-status" class="status-value">확인 중...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">데이터베이스:</span>
+                            <span id="db-status" class="status-value">확인 중...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Google Drive:</span>
+                            <span id="storage-status" class="status-value">확인 중...</span>
+                        </div>
                     </div>
-                    <input type="range" id="workerSlider" class="worker-slider" min="1" max="20" value="5" 
-                           style="margin: 0 15px; width: 150px;" oninput="updateWorkerValue(this.value)">
-                    <button class="apply-btn" id="applyBtn" onclick="applyWorkerSettings()" 
-                            style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 3px; cursor: pointer;">적용</button>
-                    <div class="recommended-badge" id="recommendedBadge" style="display: none; margin-left: 10px; background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">권장</div>
                 </div>
-            </div>
-            
-            <p style="color: #666; font-size: 14px; margin-top: 10px;">
-                💡 값이 클수록 빠르지만 시스템 자원을 더 많이 사용합니다. 인터넷 속도와 컴퓨터 성능에 따라 조절하세요.<br>
-                🔍 <strong>중복 파일 검사</strong>: 전체 드라이브 스캔 시 병렬 처리<br>
-                📂 <strong>해시 계산 워커</strong>: 폴더 비교 시 파일 해시 계산
-            </p>
-            
-            <style>
-                .worker-counter {
-                    display: flex;
-                    align-items: center;
-                    margin-right: 15px;
-                }
-                
-                .setting-controls {
-                    display: flex;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    gap: 10px;
-                }
-                
-                .worker-counter button:hover {
-                    background: #e9ecef;
-                }
-                
-                .worker-counter button:disabled {
-                    background: #f8f9fa;
-                    color: #6c757d;
-                    cursor: not-allowed;
-                }
-                
-                .apply-btn {
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    padding: 8px 15px;
-                    border-radius: 3px;
-                    cursor: pointer;
-                }
-                
-                .apply-btn:hover {
-                    background: #0056b3;
-                }
-                
-                .worker-value {
-                    background: #f8f9fa;
-                    border: 1px solid #ddd;
-                    padding: 5px 10px;
-                    border-radius: 3px;
-                    min-width: 30px;
-                    text-align: center;
-                    font-weight: bold;
-                }
-                
-                .recommended-badge {
-                    background: #28a745;
-                    color: white;
-                    padding: 2px 8px;
-                    border-radius: 10px;
-                    font-size: 12px;
-                }
-            </style>
-        </div>
-        
-        <div id="progress" style="display: none;"></div>
-        <div id="results"></div>
-        
-        <!-- 파일 통계 대시보드 -->
-        <div id="stats-section" class="duplicate-section" style="display: none;">
-            <h2>📊 드라이브 파일 통계</h2>
-            <div id="file-stats-dashboard"></div>
-        </div>
-        
-        <!-- 파일 탐색기 -->
-        <div id="explorer-section" class="duplicate-section" style="display: none;">
-            <h2>📁 파일 탐색기</h2>
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
-                <div style="margin-bottom: 15px;">
-                    <label for="fileSearch" style="display: block; margin-bottom: 5px; font-weight: bold;">🔍 파일 검색:</label>
-                    <input type="text" id="fileSearch" placeholder="파일명, 확장자, 경로로 검색..." 
-                           style="width: 70%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin-right: 10px;">
-                    <button onclick="searchFiles()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
-                        검색
-                    </button>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="margin-right: 20px;">
-                        <input type="checkbox" id="filterImages" style="margin-right: 5px;"> 이미지 파일
-                    </label>
-                    <label style="margin-right: 20px;">
-                        <input type="checkbox" id="filterDocuments" style="margin-right: 5px;"> 문서 파일
-                    </label>
-                    <label style="margin-right: 20px;">
-                        <input type="checkbox" id="filterVideos" style="margin-right: 5px;"> 비디오 파일
-                    </label>
-                    <label style="margin-right: 20px;">
-                        <input type="checkbox" id="filterLargeFiles" style="margin-right: 5px;"> 대용량 파일 (>100MB)
-                    </label>
-                </div>
-            </div>
-            <div id="file-explorer-results"></div>
-        </div>
 
-        <div id="duplicates-section" class="duplicate-section" style="display: none;">
-            <h2>🔍 발견된 중복 파일 <span class="realtime-indicator">(실시간 업데이트)</span></h2>
-            <div id="live-duplicates"></div>
-        </div>
-        
-        <div id="folder-comparison-section" class="duplicate-section">
-            <h2>📂 폴더 간 중복 파일 삭제</h2>
-            <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #28a745;">
-                <p><strong>💡 설명:</strong> 두 폴더를 비교하여 첫 번째 폴더(기준)와 중복되는 파일들을 두 번째 폴더(대상)에서 삭제합니다.</p>
-            </div>
-            
-            <!-- 저장된 작업 불러오기 섹션 -->
-            <div id="saved-comparison-section" style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ffc107; display: none;">
-                <h4 style="margin-top: 0; margin-bottom: 10px;">🔄 저장된 폴더 비교 작업이 있습니다</h4>
-                <div id="saved-comparison-info" style="margin-bottom: 15px;">
-                    <!-- 저장된 작업 정보가 여기에 표시됩니다 -->
+                <!-- Quick Stats -->
+                <div class="card">
+                    <h3>통계</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number" id="total-files">-</div>
+                            <div class="stat-label">전체 파일</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="duplicate-groups">-</div>
+                            <div class="stat-label">중복 그룹</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="wasted-space">-</div>
+                            <div class="stat-label">낭비된 공간</div>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <button onclick="loadSavedComparison()" id="loadSavedComparisonBtn" 
-                            style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
-                        🔄 저장된 작업 불러오기
-                    </button>
-                    <button onclick="clearSavedComparison()" id="clearSavedComparisonBtn" 
-                            style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
-                        🗑️ 저장된 작업 삭제
-                    </button>
-                    <button onclick="hideSavedComparisonSection()" 
-                            style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
-                        숨기기
-                    </button>
+
+                <!-- Recent Operations -->
+                <div class="card">
+                    <h3>최근 작업</h3>
+                    <div id="recent-operations">
+                        <p class="loading">작업 내역을 불러오는 중...</p>
+                    </div>
                 </div>
-            </div>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
-                <div style="margin-bottom: 15px;">
-                    <label for="sourceFolderUrl" style="display: block; margin-bottom: 5px; font-weight: bold;">📁 기준 폴더 URL (중복 파일을 유지할 폴더):</label>
-                    <input type="text" id="sourceFolderUrl" placeholder="https://drive.google.com/drive/folders/1ABC123..." 
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;">
-                    <small style="color: #666;">중복 파일을 유지할 기준 폴더의 URL</small>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label for="targetFolderUrl" style="display: block; margin-bottom: 5px; font-weight: bold;">📁 대상 폴더 URL (중복 파일을 삭제할 폴더):</label>
-                    <input type="text" id="targetFolderUrl" placeholder="https://drive.google.com/drive/folders/1DEF456..." 
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;">
-                    <small style="color: #666;">중복 파일을 삭제할 대상 폴더의 URL</small>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <button onclick="compareFolders()" id="compareFoldersBtn" 
-                            style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
-                        🔍 폴더 비교 및 중복 파일 검색
-                    </button>
-                </div>
-            </div>
-            
-            <div id="comparison-preview" style="display: none;">
-                <h3>📋 비교 결과</h3>
-                <div id="comparison-summary"></div>
-                <div id="duplicates-list"></div>
-                <div style="margin-top: 20px;">
-                    <button onclick="confirmDeleteDuplicates()" id="confirmDeleteDuplicatesBtn" 
-                            style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
-                        ❌ 대상 폴더에서 중복 파일 삭제
-                    </button>
-                    <button onclick="cancelFolderComparison()" 
-                            style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
-                        취소
-                    </button>
+
+                <!-- Progress Chart -->
+                <div class="card">
+                    <h3>작업 진행률</h3>
+                    <canvas id="progress-chart" width="400" height="200"></canvas>
                 </div>
             </div>
         </div>
 
-        <div id="bulk-delete-section" class="duplicate-section">
-            <h2>🗑️ 정규식 기반 일괄 파일 삭제</h2>
-            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
-                <p><strong>⚠️ 주의:</strong> 이 기능은 지정된 폴더의 파일들을 영구적으로 삭제합니다. 신중하게 사용하세요.</p>
+        <!-- File Scan Tab -->
+        <div id="scan" class="tab-content">
+            <div class="scan-container">
+                <div class="card">
+                    <h3>파일 스캔</h3>
+                    <div class="scan-controls">
+                        <button id="start-scan-btn" class="btn btn-primary" onclick="startFileScan()">
+                            전체 스캔 시작
+                        </button>
+                        <button id="calculate-hashes-btn" class="btn btn-secondary" onclick="calculateHashes()">
+                            해시 계산
+                        </button>
+                        <button class="btn btn-info" onclick="refreshScanProgress()">
+                            진행 상황 새로고침
+                        </button>
+                    </div>
+                    
+                    <div class="progress-section">
+                        <h4>스캔 진행 상황</h4>
+                        <div id="scan-progress" class="progress-container">
+                            <p>스캔 정보를 불러오는 중...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>폴더별 스캔</h3>
+                    <div class="folder-scan-controls">
+                        <input type="text" id="folder-id-input" placeholder="폴더 ID 입력" class="input">
+                        <button class="btn btn-primary" onclick="scanFolder()">폴더 스캔</button>
+                    </div>
+                    <p class="help-text">특정 폴더만 스캔하려면 Google Drive 폴더 ID를 입력하세요.</p>
+                </div>
             </div>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
-                <div style="margin-bottom: 15px;">
-                    <label for="folderUrl" style="display: block; margin-bottom: 5px; font-weight: bold;">📁 폴더 URL:</label>
-                    <input type="text" id="folderUrl" placeholder="https://drive.google.com/drive/folders/..." 
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;">
-                    <small style="color: #666;">Google Drive 폴더의 URL을 입력하세요</small>
+        </div>
+
+        <!-- Duplicates Tab -->
+        <div id="duplicates" class="tab-content">
+            <div class="duplicates-container">
+                <div class="card">
+                    <h3>중복 파일 검색</h3>
+                    <div class="duplicate-controls">
+                        <button class="btn btn-primary" onclick="findDuplicates()">
+                            중복 파일 검색
+                        </button>
+                        <button class="btn btn-info" onclick="refreshDuplicates()">
+                            목록 새로고침
+                        </button>
+                        <button class="btn btn-secondary" onclick="getDuplicateProgress()">
+                            진행 상황 확인
+                        </button>
+                    </div>
+                    
+                    <div class="pagination-controls">
+                        <button class="btn" onclick="prevPage()" id="prev-btn" disabled>이전</button>
+                        <span id="page-info">페이지 1 / 1</span>
+                        <button class="btn" onclick="nextPage()" id="next-btn" disabled>다음</button>
+                        <select id="page-size" onchange="changePageSize()">
+                            <option value="10">10개씩</option>
+                            <option value="20" selected>20개씩</option>
+                            <option value="50">50개씩</option>
+                        </select>
+                    </div>
                 </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label for="regexPattern" style="display: block; margin-bottom: 5px; font-weight: bold;">🔍 필터 패턴 (정규표현식):</label>
-                    <input type="text" id="regexPattern" placeholder="예: \.tmp$|\.bak$|test.*\.txt$" 
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px;">
-                    <small style="color: #666;">삭제할 파일의 패턴을 정규표현식으로 입력하세요. 예: \.log$ (log 파일), test.* (test로 시작하는 파일)</small>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <button onclick="searchFilesToDelete()" id="searchBtn" 
-                            style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
-                        🔍 삭제 대상 파일 검색
-                    </button>
+
+                <div class="card">
+                    <h3>중복 그룹 목록</h3>
+                    <div id="duplicate-groups-container">
+                        <p class="loading">중복 그룹을 불러오는 중...</p>
+                    </div>
                 </div>
             </div>
-            
-            <div id="delete-preview" style="display: none;">
-                <h3>🗑️ 삭제 예정 파일 목록</h3>
-                <div id="files-to-delete"></div>
-                <div style="margin-top: 20px;">
-                    <button onclick="confirmBulkDelete()" id="confirmDeleteBtn" 
-                            style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin-right: 10px;">
-                        ❌ 선택된 파일들 삭제
-                    </button>
-                    <button onclick="cancelBulkDelete()" 
-                            style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer;">
-                        취소
-                    </button>
+        </div>
+
+        <!-- Cleanup Tab -->
+        <div id="cleanup" class="tab-content">
+            <div class="cleanup-container">
+                <div class="card">
+                    <h3>파일 정리 도구</h3>
+                    <div class="cleanup-tools">
+                        <div class="tool-section">
+                            <h4>특정 파일 삭제</h4>
+                            <textarea id="file-ids-input" placeholder="파일 ID들을 줄바꿈으로 구분하여 입력" class="input" rows="3"></textarea>
+                            <button class="btn btn-danger" onclick="deleteSpecificFiles()">선택된 파일 삭제</button>
+                        </div>
+
+                        <div class="tool-section">
+                            <h4>패턴 기반 일괄 삭제</h4>
+                            <input type="text" id="pattern-input" placeholder="정규식 패턴 (예: .*\\.tmp$)" class="input">
+                            <button class="btn btn-warning" onclick="searchByPattern()">검색</button>
+                            <button class="btn btn-danger" onclick="deleteByPattern()">패턴 매칭 파일 삭제</button>
+                            <div id="pattern-results" class="pattern-results"></div>
+                        </div>
+
+                        <div class="tool-section">
+                            <h4>빈 폴더 정리</h4>
+                            <button class="btn btn-warning" onclick="cleanupEmptyFolders()">빈 폴더 정리</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>정리 진행 상황</h3>
+                    <div id="cleanup-progress">
+                        <p>정리 작업 정보가 없습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="settings-container">
+                <div class="card">
+                    <h3>스캔 설정</h3>
+                    <div class="setting-group">
+                        <label for="worker-count">작업자 수:</label>
+                        <input type="number" id="worker-count" value="4" min="1" max="10" class="input">
+                    </div>
+                    <div class="setting-group">
+                        <label for="batch-size">배치 크기:</label>
+                        <input type="number" id="batch-size" value="100" min="10" max="1000" class="input">
+                    </div>
+                    <button class="btn btn-primary" onclick="applySettings()">설정 적용</button>
+                </div>
+
+                <div class="card">
+                    <h3>API 정보</h3>
+                    <div class="api-info">
+                        <p><strong>서버 주소:</strong> <span id="api-base-url">http://localhost:8080</span></p>
+                        <p><strong>API 버전:</strong> v1.0.0</p>
+                        <p><strong>아키텍처:</strong> Clean Architecture</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Notification Area -->
+    <div id="notification" class="notification hidden">
+        <span id="notification-message"></span>
+        <button onclick="hideNotification()">&times;</button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loading-message">처리 중...</p>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,567 @@
+/**
+ * 폼 컴포넌트 스타일
+ * 모든 입력 요소와 폼 레이아웃 정의
+ */
+
+/* === 기본 폼 === */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.form-horizontal {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-4);
+  align-items: center;
+}
+
+.form-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+/* === 폼 그룹 === */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.form-group.required .form-label::after {
+  content: ' *';
+  color: var(--color-error);
+  font-weight: var(--font-bold);
+}
+
+/* === 폼 라벨 === */
+.form-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  line-height: var(--leading-tight);
+}
+
+.form-label-inline {
+  margin-bottom: 0;
+  margin-right: var(--spacing-3);
+  white-space: nowrap;
+}
+
+/* === 기본 입력 필드 === */
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  height: var(--input-height);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-normal);
+  
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: var(--input-border-width) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  
+  transition: all var(--duration-150) var(--ease-in-out);
+  
+  /* 기본 브라우저 스타일 제거 */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+  background-color: var(--bg-secondary);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.form-input:disabled,
+.form-textarea:disabled,
+.form-select:disabled {
+  background-color: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* === 텍스트 영역 === */
+.form-textarea {
+  height: auto;
+  min-height: calc(var(--input-height) * 2);
+  resize: vertical;
+  line-height: var(--leading-relaxed);
+}
+
+.form-textarea.fixed {
+  resize: none;
+}
+
+/* === 셀렉트 박스 === */
+.form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right var(--spacing-3) center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  padding-right: calc(var(--spacing-3) * 2 + 16px);
+}
+
+.form-select[multiple] {
+  background-image: none;
+  padding-right: var(--input-padding-x);
+  height: auto;
+  min-height: calc(var(--input-height) * 3);
+}
+
+/* === 입력 크기 변형 === */
+.form-input-sm,
+.form-textarea-sm,
+.form-select-sm {
+  height: var(--input-height-sm);
+  padding: var(--input-padding-y-sm) var(--input-padding-x-sm);
+  font-size: var(--text-xs);
+}
+
+.form-input-lg,
+.form-textarea-lg,
+.form-select-lg {
+  height: var(--input-height-lg);
+  padding: var(--input-padding-y-lg) var(--input-padding-x-lg);
+  font-size: var(--text-base);
+}
+
+/* === 입력 그룹 === */
+.input-group {
+  display: flex;
+  width: 100%;
+}
+
+.input-group .form-input {
+  flex: 1;
+  border-radius: 0;
+}
+
+.input-group .form-input:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.input-group .form-input:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.input-group .form-input:not(:first-child) {
+  border-left-width: 0;
+}
+
+.input-group .form-input:focus {
+  z-index: 1;
+  border-left-width: var(--input-border-width);
+}
+
+/* === 입력 애드온 === */
+.input-addon {
+  display: flex;
+  align-items: center;
+  padding: var(--input-padding-y) var(--input-padding-x);
+  background-color: var(--bg-tertiary);
+  border: var(--input-border-width) solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.input-addon:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  border-right-width: 0;
+}
+
+.input-addon:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  border-left-width: 0;
+}
+
+/* === 체크박스와 라디오 === */
+.form-checkbox,
+.form-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  user-select: none;
+}
+
+.form-checkbox input[type="checkbox"],
+.form-radio input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+  
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  
+  position: relative;
+  transition: all var(--duration-150) var(--ease-in-out);
+}
+
+.form-radio input[type="radio"] {
+  border-radius: var(--radius-full);
+}
+
+.form-checkbox input[type="checkbox"]:checked,
+.form-radio input[type="radio"]:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.form-checkbox input[type="checkbox"]:checked::before {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: var(--font-bold);
+}
+
+.form-radio input[type="radio"]:checked::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: white;
+  border-radius: var(--radius-full);
+}
+
+.form-checkbox input[type="checkbox"]:focus,
+.form-radio input[type="radio"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.form-checkbox input[type="checkbox"]:disabled,
+.form-radio input[type="radio"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-checkbox:has(input:disabled),
+.form-radio:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === 스위치 === */
+.form-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  user-select: none;
+}
+
+.form-switch input[type="checkbox"] {
+  width: 2.5rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+  
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  
+  background-color: var(--bg-tertiary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  
+  position: relative;
+  transition: all var(--duration-200) var(--ease-in-out);
+}
+
+.form-switch input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: white;
+  border-radius: var(--radius-full);
+  transition: transform var(--duration-200) var(--ease-in-out);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-switch input[type="checkbox"]:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.form-switch input[type="checkbox"]:checked::before {
+  transform: translateX(1.25rem);
+}
+
+.form-switch input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* === 파일 입력 === */
+.form-file {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.form-file input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.form-file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  
+  padding: var(--input-padding-y) var(--input-padding-x);
+  background-color: var(--bg-secondary);
+  border: var(--input-border-width) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  
+  cursor: pointer;
+  transition: all var(--duration-150) var(--ease-in-out);
+}
+
+.form-file-label:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-secondary);
+}
+
+.form-file:focus-within .form-file-label {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* === 도움말 텍스트 === */
+.form-help {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
+  margin-top: var(--spacing-1);
+}
+
+/* === 에러 메시지 === */
+.form-error {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  line-height: var(--leading-relaxed);
+  margin-top: var(--spacing-1);
+}
+
+.form-group.has-error .form-input,
+.form-group.has-error .form-textarea,
+.form-group.has-error .form-select {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px var(--color-error-light);
+}
+
+.form-group.has-error .form-label {
+  color: var(--color-error);
+}
+
+/* === 성공 상태 === */
+.form-group.has-success .form-input,
+.form-group.has-success .form-textarea,
+.form-group.has-success .form-select {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-light);
+}
+
+.form-group.has-success .form-label {
+  color: var(--color-success);
+}
+
+/* === 경고 상태 === */
+.form-group.has-warning .form-input,
+.form-group.has-warning .form-textarea,
+.form-group.has-warning .form-select {
+  border-color: var(--color-warning);
+  box-shadow: 0 0 0 3px var(--color-warning-light);
+}
+
+.form-group.has-warning .form-label {
+  color: var(--color-warning);
+}
+
+/* === 폼 액션 === */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--border-primary);
+  margin-top: var(--spacing-6);
+}
+
+.form-actions-left {
+  justify-content: flex-start;
+}
+
+.form-actions-center {
+  justify-content: center;
+}
+
+.form-actions-between {
+  justify-content: space-between;
+}
+
+/* === 검색 폼 === */
+.search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  padding-right: calc(var(--spacing-3) * 2 + 1rem);
+}
+
+.search-button {
+  position: absolute;
+  right: var(--spacing-3);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-1);
+  transition: color var(--duration-150) var(--ease-in-out);
+}
+
+.search-button:hover {
+  color: var(--text-secondary);
+}
+
+/* === 반응형 디자인 === */
+@media (max-width: 768px) {
+  .form-horizontal {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-2);
+  }
+  
+  .form-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .input-group {
+    flex-direction: column;
+  }
+  
+  .input-group .form-input {
+    border-radius: var(--radius-md);
+    border-left-width: var(--input-border-width);
+  }
+  
+  .input-group .form-input:not(:first-child) {
+    border-top-width: 0;
+  }
+  
+  .input-addon:first-child,
+  .input-addon:last-child {
+    border-radius: var(--radius-md);
+    border-width: var(--input-border-width);
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions-between {
+    flex-direction: column;
+  }
+}
+
+/* === 다크 테마 조정 === */
+[data-theme="dark"] .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%94a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* === 고대비 모드 === */
+@media (prefers-contrast: high) {
+  .form-input,
+  .form-textarea,
+  .form-select {
+    border-width: 2px;
+  }
+  
+  .form-input:focus,
+  .form-textarea:focus,
+  .form-select:focus {
+    box-shadow: 0 0 0 3px currentColor;
+  }
+  
+  .form-checkbox input[type="checkbox"],
+  .form-radio input[type="radio"] {
+    border-width: 2px;
+  }
+}
+
+/* === 애니메이션 감소 모드 === */
+@media (prefers-reduced-motion: reduce) {
+  .form-input,
+  .form-textarea,
+  .form-select,
+  .form-checkbox input,
+  .form-radio input,
+  .form-switch input,
+  .form-file-label {
+    transition: none;
+  }
+  
+  .form-switch input[type="checkbox"]::before {
+    transition: none;
+  }
+}

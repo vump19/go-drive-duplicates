@@ -1,0 +1,14 @@
+{
+  "name": "Google Drive 중복 파일 관리",
+  "short_name": "Drive Duplicates",
+  "description": "Google Drive의 중복 파일을 찾고 정리하여 저장 공간을 확보하세요",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "lang": "ko",
+  "categories": ["productivity", "utilities"],
+  "icons": []
+}

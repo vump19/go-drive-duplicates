@@ -1,0 +1,42 @@
+# 프론트엔드 설정 파일
+# Google Drive Duplicates Finder - Frontend Configuration
+
+# 프론트엔드 서버 설정
+frontend:
+  port: 3000
+  host: localhost
+  title: "Google Drive Duplicates Finder"
+  theme: light
+
+# 백엔드 연결 설정
+backend:
+  protocol: http
+  host: localhost
+  port: 9090
+  api_path: /api
+  timeout: 30000    # 30초
+  retries: 3
+
+# 기능 설정
+features:
+  enable_auto_scan: true
+  enable_hash_verification: true
+  enable_bulk_operations: true
+  max_file_size: 1073741824  # 1GB
+  supported_formats:
+    - image
+    - video
+    - document
+    - archive
+
+# UI 설정
+ui:
+  pagination:
+    default_page_size: 50
+    max_page_size: 200
+  progress:
+    update_interval: 1000  # 1초
+    animation_duration: 300  # 0.3초
+  notifications:
+    position: top-right
+    duration: 5000  # 5초

@@ -1,0 +1,53 @@
+{
+  "server": {
+    "host": "localhost",
+    "port": 8080,
+    "readTimeout": "30s",
+    "writeTimeout": "30s",
+    "idleTimeout": "60s",
+    "enableTLS": false,
+    "certFile": "",
+    "keyFile": ""
+  },
+  "database": {
+    "path": "./drive_duplicates.db",
+    "maxOpenConns": 25,
+    "maxIdleConns": 5,
+    "maxLifetime": "1h"
+  },
+  "googleDrive": {
+    "credentialsPath": "./credentials.json",
+    "apiKey": "",
+    "scopes": ["https://www.googleapis.com/auth/drive.readonly"],
+    "maxRetries": 3,
+    "requestTimeout": "30s"
+  },
+  "hash": {
+    "algorithm": "sha256",
+    "workerCount": 4,
+    "maxFileSize": 1073741824,
+    "bufferSize": 65536
+  },
+  "processing": {
+    "batchSize": 100,
+    "workerCount": 5,
+    "saveInterval": "30s",
+    "maxRetries": 3
+  },
+  "security": {
+    "enableCORS": true,
+    "enableRateLimit": false,
+    "rateLimit": 100,
+    "allowedOrigins": ["*"]
+  },
+  "logging": {
+    "level": "info",
+    "format": "text",
+    "output": "stdout",
+    "maxSize": 100,
+    "maxBackups": 3,
+    "maxAge": 7,
+    "compress": true
+  },
+  "environment": "development"
+}

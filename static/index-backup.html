@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Google Drive 중복 파일 찾기 및 정리 도구">
+    <meta name="author" content="Google Drive Duplicates Finder">
+    <meta name="theme-color" content="#3b82f6">
+    
+    <title>Google Drive 중복 파일 관리</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 메인 CSS -->
+    <link rel="stylesheet" href="./css/app.css">
+    
+    <!-- PWA 매니페스트 -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- 메타 태그 -->
+    <meta property="og:title" content="Google Drive 중복 파일 관리">
+    <meta property="og:description" content="Google Drive의 중복 파일을 찾고 정리하여 저장 공간을 확보하세요">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://your-domain.com">
+    <meta property="og:image" content="./og-image.png">
+    
+    <!-- Preload 중요 리소스 -->
+    <link rel="preload" href="./js/modules/core/EventBus.js" as="script" crossorigin>
+    <link rel="preload" href="./js/modules/core/StateManager.js" as="script" crossorigin>
+    <link rel="preload" href="./js/modules/core/Router.js" as="script" crossorigin>
+    <link rel="preload" href="./js/modules/App.js" as="script" crossorigin>
+    
+    <!-- DNS 프리페치 -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    
+    <!-- 초기 테마 설정 (깜빡임 방지) -->
+    <script>
+        // 저장된 테마 설정 또는 시스템 설정에 따라 초기 테마 적용
+        (function() {
+            try {
+                const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+                let theme = settings.theme || 'auto';
+                
+                if (theme === 'auto') {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {
+                // 기본값으로 시스템 설정 사용
+                const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        })();
+    </script>
+    
+    <style>
+        /* 초기 로딩 스피너 */
+        .initial-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        .initial-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            font-size: 3rem;
+            color: var(--color-primary);
+            margin-bottom: 1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 3px solid transparent;
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-align: center;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* 에러 폴백 스타일 */
+        .error-fallback {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-primary);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            color: var(--color-error);
+            margin-bottom: 1rem;
+        }
+        
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .error-message {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            max-width: 32rem;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .error-btn {
+            padding: 0.75rem 1.5rem;
+            border: 1px solid var(--border-primary);
+            border-radius: 0.5rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.15s ease-in-out;
+        }
+        
+        .error-btn:hover {
+            background-color: var(--bg-tertiary);
+            border-color: var(--border-secondary);
+        }
+        
+        .error-btn.primary {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        
+        .error-btn.primary:hover {
+            background-color: var(--color-primary-hover);
+            border-color: var(--color-primary-hover);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 초기 로딩 화면 -->
+    <div id="initialLoading" class="initial-loading">
+        <div class="loading-logo">
+            <i class="fas fa-search-plus"></i>
+        </div>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">
+            <div>Google Drive 중복 파일 관리</div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; opacity: 0.7;">
+                애플리케이션을 초기화하고 있습니다...
+            </div>
+        </div>
+    </div>
+
+    <!-- 에러 폴백 화면 -->
+    <div id="errorFallback" class="error-fallback">
+        <div class="error-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h1 class="error-title">애플리케이션 로드 실패</h1>
+        <p class="error-message">
+            애플리케이션을 로드하는 중에 오류가 발생했습니다. 
+            브라우저가 ES6 모듈을 지원하는지 확인하거나 페이지를 새로고침해 주세요.
+        </p>
+        <div class="error-actions">
+            <button class="error-btn primary" onclick="window.location.reload()">
+                <i class="fas fa-sync-alt"></i>
+                페이지 새로고침
+            </button>
+            <a href="http://localhost:8080/static/index.html" class="error-btn">
+                <i class="fas fa-arrow-left"></i>
+                기존 버전으로 돌아가기 (포트 8080)
+            </a>
+            <button class="error-btn" onclick="console.clear()">
+                <i class="fas fa-terminal"></i>
+                콘솔 지우기
+            </button>
+        </div>
+    </div>
+
+    <!-- 메인 애플리케이션 컨테이너 -->
+    <div id="app">
+        <!-- 애플리케이션이 여기에 렌더링됩니다 -->
+    </div>
+
+    <!-- 알림 컨테이너 -->
+    <div id="notifications" class="notifications" role="alert" aria-live="polite"></div>
+
+    <!-- 모달 컨테이너 -->
+    <div id="modal-container"></div>
+
+    <!-- 서비스 워커 등록 -->
+    <script>
+        // 서비스 워커 등록 (PWA 지원)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+
+    <!-- 에러 핸들링 -->
+    <script>
+        // 전역 에러 핸들러
+        window.addEventListener('error', (event) => {
+            console.error('전역 에러:', event.error);
+            showErrorFallback('JavaScript 실행 오류가 발생했습니다: ' + event.message);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('처리되지 않은 Promise 거부:', event.reason);
+            showErrorFallback('비동기 작업 중 오류가 발생했습니다: ' + event.reason);
+        });
+
+        function showErrorFallback(message) {
+            const loading = document.getElementById('initialLoading');
+            const error = document.getElementById('errorFallback');
+            const errorMessage = error.querySelector('.error-message');
+            
+            if (loading) loading.style.display = 'none';
+            if (error) {
+                error.style.display = 'flex';
+                if (errorMessage && message) {
+                    errorMessage.textContent = message;
+                }
+            }
+        }
+
+        // 모듈 로드 에러 처리
+        function handleModuleError(error) {
+            console.error('모듈 로드 실패:', error);
+            showErrorFallback('애플리케이션 모듈을 로드할 수 없습니다. 네트워크 연결을 확인해 주세요.');
+        }
+    </script>
+
+    <!-- 메인 애플리케이션 스크립트 -->
+    <script type="module">
+        // 애플리케이션 초기화
+        import { App } from './js/modules/App.js';
+        
+        // DOM이 로드된 후 애플리케이션 시작
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                console.log('🚀 애플리케이션 초기화 시작');
+                
+                // 애플리케이션 인스턴스 생성
+                const app = new App();
+                
+                // 전역 접근을 위해 window에 등록
+                window.app = app;
+                
+                // 애플리케이션 시작
+                await app.init();
+                
+                console.log('✅ 애플리케이션 초기화 완료');
+                
+                // 로딩 화면 숨기기
+                const loading = document.getElementById('initialLoading');
+                if (loading) {
+                    loading.classList.add('hidden');
+                    setTimeout(() => {
+                        loading.style.display = 'none';
+                    }, 300);
+                }
+                
+            } catch (error) {
+                console.error('애플리케이션 초기화 실패:', error);
+                handleModuleError(error);
+            }
+        });
+    </script>
+
+    <!-- 레거시 브라우저 대응 -->
+    <script nomodule>
+        showErrorFallback('이 브라우저는 ES6 모듈을 지원하지 않습니다. 최신 브라우저를 사용해 주세요.');
+    </script>
+
+    <!-- 개발 모드 전용 스크립트 -->
+    <script>
+        // 개발 환경에서 Hot Reload 지원
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            // 개발 도구 콘솔에 유용한 정보 출력
+            console.log('%c🎯 개발 모드', 'color: #10b981; font-weight: bold; font-size: 14px;');
+            console.log('애플리케이션 상태는 window.app으로 접근할 수 있습니다.');
+            console.log('상태 관리자는 window.app.stateManager로 접근할 수 있습니다.');
+            console.log('라우터는 window.app.router로 접근할 수 있습니다.');
+            
+            // 개발 모드 플래그 설정
+            window.isDevelopment = true;
+            
+            // 키보드 단축키 (개발 모드)
+            document.addEventListener('keydown', (e) => {
+                // Ctrl/Cmd + Shift + D: 디버그 모드 토글
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+                    e.preventDefault();
+                    console.log('Debug mode toggled');
+                    window.app?.toggleDebugMode?.();
+                }
+                
+                // Ctrl/Cmd + Shift + R: 상태 리셋
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
+                    e.preventDefault();
+                    if (confirm('애플리케이션 상태를 리셋하시겠습니까?')) {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        location.reload();
+                    }
+                }
+            });
+        }
+    </script>
+
+    <!-- 성능 모니터링 -->
+    <script>
+        // 페이지 로드 성능 측정
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const perfData = performance.getEntriesByType('navigation')[0];
+                if (perfData) {
+                    console.log('📊 페이지 로드 성능:');
+                    console.log(`DOM 로드: ${Math.round(perfData.domContentLoadedEventEnd - perfData.domContentLoadedEventStart)}ms`);
+                    console.log(`전체 로드: ${Math.round(perfData.loadEventEnd - perfData.loadEventStart)}ms`);
+                    console.log(`첫 바이트까지: ${Math.round(perfData.responseStart - perfData.requestStart)}ms`);
+                }
+            }, 0);
+        });
+    </script>
+</body>
+</html>

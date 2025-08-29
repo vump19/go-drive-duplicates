@@ -5,9 +5,11 @@ go 1.23.0
 toolchain go1.24.4
 
 require (
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.238.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
