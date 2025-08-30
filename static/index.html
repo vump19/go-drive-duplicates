@@ -1737,12 +1737,12 @@
         
         // 단일 폴더 중복 검색 모달 관리 함수들
         function findSingleFolderDuplicates() {
-            document.getElementById('singleFolderDuplicateModal').style.display = 'flex';
+            document.getElementById('singleFolderDuplicateModal').classList.remove('hidden');
             resetSingleFolderDuplicateModal();
         }
 
         function closeSingleFolderDuplicateModal() {
-            document.getElementById('singleFolderDuplicateModal').style.display = 'none';
+            document.getElementById('singleFolderDuplicateModal').classList.add('hidden');
             if (singleFolderProgressInterval) {
                 clearInterval(singleFolderProgressInterval);
                 singleFolderProgressInterval = null;
@@ -2170,13 +2170,11 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 const singleFolderModal = document.getElementById('singleFolderDuplicateModal');
-                if (singleFolderModal && singleFolderModal.style.display === 'flex') {
+                if (singleFolderModal && !singleFolderModal.classList.contains('hidden')) {
                     closeSingleFolderDuplicateModal();
                     return;
                 }
             }
-        });
-        
         });
     </script>
 
@@ -2986,7 +2984,7 @@
     </div>
 
     <!-- 단일 폴더 중복 검색 모달 -->
-    <div id="singleFolderDuplicateModal" class="modal">
+    <div id="singleFolderDuplicateModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-search"></i> 폴더 내 중복 파일 검색</h2>

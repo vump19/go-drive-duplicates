@@ -1213,7 +1213,7 @@ func (uc *FolderComparisonUseCase) performSingleFolderDuplicateScan(ctx context.
 	progress.SetMetadata("currentPhase", "scanning_files")
 	uc.progressService.UpdateOperation(ctx, progress.ID, 0, "폴더 파일 스캔 중...")
 
-	files, err := uc.getFilesRecursive(ctx, req.FolderID, req.IncludeSubfolders)
+	files, err := uc.getFilesRecursive(ctx, req.FolderID)
 	if err != nil {
 		log.Printf("❌ 폴더 파일 스캔 실패: %v", err)
 		uc.progressService.FailOperation(ctx, progress.ID, fmt.Sprintf("폴더 파일 스캔 실패: %v", err))
@@ -1291,7 +1291,7 @@ func (uc *FolderComparisonUseCase) findDuplicatesWithHashes(ctx context.Context,
 	for i, file := range files {
 		// Calculate hash if not already calculated
 		if file.Hash == "" {
-			hash, err := uc.hashService.CalculateFileHash(ctx, file.ID)
+			hash, err := uc.hashService.CalculateFileHash(ctx, file)
 			if err != nil {
 				log.Printf("⚠️ 파일 해시 계산 실패 (건너뜀): %s - %v", file.Name, err)
 				continue

@@ -6,18 +6,13 @@ const CACHE_NAME = 'drive-duplicates-v1';
 const STATIC_CACHE = 'static-v1';
 const DYNAMIC_CACHE = 'dynamic-v1';
 
-// 캐시할 정적 파일들
+// 캐시할 정적 파일들 (현재 사용되는 파일들만)
 const STATIC_FILES = [
   './',
   './index.html',
-  './css/app.css',
-  './js/app.js',
-  './js/api.js',
-  './js/modules/App.js',
-  './js/modules/core/EventBus.js',
-  './js/modules/core/StateManager.js',
-  './js/modules/core/Router.js',
-  './manifest.json'
+  './config-test.html',
+  './manifest.json',
+  './favicon.ico'
 ];
 
 // 설치 이벤트
