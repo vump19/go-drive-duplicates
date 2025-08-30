@@ -72,8 +72,6 @@ func (r *ComparisonResultRepository) CreateTables(ctx context.Context) error {
 
 // migrateSchema adds missing columns to existing tables
 func (r *ComparisonResultRepository) migrateSchema(ctx context.Context) error {
-	log.Printf("🔧 데이터베이스 스키마 마이그레이션 시작...")
-	
 	// Check if duplicate_size column exists
 	checkQuery := `SELECT COUNT(*) FROM pragma_table_info('comparison_results') WHERE name='duplicate_size'`
 	var count int
@@ -82,20 +80,15 @@ func (r *ComparisonResultRepository) migrateSchema(ctx context.Context) error {
 		return err
 	}
 	
+	// Add duplicate_size column if it doesn't exist
 	if count == 0 {
-		log.Printf("➕ duplicate_size 컬럼이 없어서 추가합니다...")
 		alterQuery := `ALTER TABLE comparison_results ADD COLUMN duplicate_size INTEGER DEFAULT 0`
 		_, err = r.db.ExecContext(ctx, alterQuery)
 		if err != nil {
-			log.Printf("❌ duplicate_size 컬럼 추가 실패: %v", err)
 			return err
 		}
-		log.Printf("✅ duplicate_size 컬럼 추가 완료")
-	} else {
-		log.Printf("✅ duplicate_size 컬럼이 이미 존재합니다")
 	}
 	
-	log.Printf("✅ 데이터베이스 스키마 마이그레이션 완료")
 	return nil
 }
 
@@ -172,27 +165,42 @@ func (r *ComparisonResultRepository) Save(ctx context.Context, result *entities.
 		}
 	}
 
-	// Insert duplicate file relationships
+	// Insert duplicate file relationships using batch processing
 	if len(result.DuplicateFiles) > 0 {
 		log.Printf("🔗 중복 파일 관계 저장 시작 - %d개 파일", len(result.DuplicateFiles))
-		query := "INSERT INTO comparison_duplicate_files (comparison_id, file_id) VALUES "
-		values := make([]string, len(result.DuplicateFiles))
-		args := make([]interface{}, len(result.DuplicateFiles)*2)
+		
+		// SQLite variable limit is 999, so we use batches of 400 (400 * 2 = 800 parameters)
+		const batchSize = 400
+		totalFiles := len(result.DuplicateFiles)
+		
+		for i := 0; i < totalFiles; i += batchSize {
+			end := i + batchSize
+			if end > totalFiles {
+				end = totalFiles
+			}
+			
+			batch := result.DuplicateFiles[i:end]
+			log.Printf("📝 배치 %d-%d/%d 중복 파일 관계 저장 중...", i+1, end, totalFiles)
+			
+			query := "INSERT INTO comparison_duplicate_files (comparison_id, file_id) VALUES "
+			values := make([]string, len(batch))
+			args := make([]interface{}, len(batch)*2)
 
-		for i, file := range result.DuplicateFiles {
-			values[i] = "(?, ?)"
-			args[i*2] = result.ID
-			args[i*2+1] = file.ID
-		}
+			for j, file := range batch {
+				values[j] = "(?, ?)"
+				args[j*2] = result.ID
+				args[j*2+1] = file.ID
+			}
 
-		query += strings.Join(values, ", ")
-		log.Printf("📝 중복 파일 관계 쿼리 실행 중...")
-		_, err = tx.ExecContext(ctx, query, args...)
-		if err != nil {
-			log.Printf("❌ 중복 파일 관계 저장 실패: %v", err)
-			return err
+			query += strings.Join(values, ", ")
+			_, err = tx.ExecContext(ctx, query, args...)
+			if err != nil {
+				log.Printf("❌ 배치 %d-%d 중복 파일 관계 저장 실패: %v", i+1, end, err)
+				return err
+			}
+			log.Printf("✅ 배치 %d-%d 중복 파일 관계 저장 완료", i+1, end)
 		}
-		log.Printf("✅ 중복 파일 관계 저장 완료")
+		log.Printf("✅ 모든 중복 파일 관계 저장 완료 - %d개 파일", totalFiles)
 	} else {
 		log.Printf("ℹ️ 중복 파일이 없어서 관계 저장 건너뛰기")
 	}

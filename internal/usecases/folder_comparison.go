@@ -441,7 +441,21 @@ func (uc *FolderComparisonUseCase) performFolderComparison(ctx context.Context, 
 		log.Printf("📊 중복 파일 %d개 발견 (%.1f%% 중복)",
 			len(duplicateFiles), result.DuplicationPercentage)
 
-			// Step 5: Save comparison result
+			// Step 5a: Save files to database first to avoid foreign key constraint errors
+		log.Printf("💾 파일 메타데이터 저장 시작...")
+		uc.progressService.UpdateOperation(ctx, progress.ID, totalFiles, "파일 메타데이터 저장 중...")
+		
+		allFiles := append(sourceFiles, targetFiles...)
+		err = uc.saveFilesToDatabase(ctx, allFiles)
+		if err != nil {
+			log.Printf("❌ 파일 저장 실패: %v", err)
+			uc.progressService.FailOperation(ctx, progress.ID, fmt.Sprintf("파일 저장 실패: %v", err))
+			response.Errors = append(response.Errors, fmt.Sprintf("파일 저장 실패: %v", err))
+			return
+		}
+		log.Printf("✅ 파일 메타데이터 저장 완료")
+		
+		// Step 5b: Save comparison result
 		log.Printf("💾 비교 결과 저장 시작...")
 		uc.progressService.UpdateOperation(ctx, progress.ID, totalFiles, "비교 결과 저장 중...")
 		progress.SetMetadata("currentPhase", "saving_results")
@@ -895,48 +909,38 @@ func (uc *FolderComparisonUseCase) performDuplicateFilesDeletion(ctx context.Con
 	// Track folders that might become empty
 	affectedFolders := make(map[string]bool)
 
-	// Delete files one by one
-	for i, fileID := range req.FileIDs {
-		log.Printf("🗑️ 파일 삭제 중: %s (%d/%d)", fileID, i+1, len(req.FileIDs))
+	// Pre-collect parent folders for empty folder cleanup
+	if req.DeleteEmptyFolders {
+		log.Printf("📁 빈 폴더 정리를 위한 부모 폴더 정보 수집 중...")
+		uc.collectParentFoldersFromComparison(ctx, comparison, req.FileIDs, affectedFolders)
+	}
 
-		// Get file info before deletion to track parent folder
-		if req.DeleteEmptyFolders {
-			file, err := uc.storageProvider.GetFile(ctx, fileID)
-			if err == nil && len(file.Parents) > 0 {
-				affectedFolders[file.Parents[0]] = true
-			}
+	// Use batch deletion with parallel processing (configurable)
+	batchSize := 10 // Default batch size
+	progressUpdateInterval := 5 // Default progress update interval
+	
+	// Use configuration if available (you'll need to inject config into UseCase)
+	// For now, use defaults but make them configurable later
+	totalFiles := len(req.FileIDs)
+	
+	log.Printf("🚀 병렬 파일 삭제 시작: %d개 파일, 배치 크기: %d", totalFiles, batchSize)
+
+	for i := 0; i < totalFiles; i += batchSize {
+		end := i + batchSize
+		if end > totalFiles {
+			end = totalFiles
 		}
-
-		// Call deletion callback - mark as deleting
-		if req.DeletionCallback != nil {
-			req.DeletionCallback(fileID, "deleting")
+		
+		batch := req.FileIDs[i:end]
+		uc.deleteBatchFiles(ctx, batch, req, response)
+		
+		// Update progress less frequently (per batch instead of per file)
+		progress.UpdateProgress(end, fmt.Sprintf("파일 삭제 중... (%d/%d)", end, totalFiles))
+		
+		// Only update database every N batches or at end (configurable)
+		if (i/batchSize)%progressUpdateInterval == 0 || end == totalFiles {
+			uc.progressService.UpdateOperation(ctx, progress.ID, end, progress.CurrentStep)
 		}
-
-		// Delete file
-		err := uc.storageProvider.DeleteFile(ctx, fileID)
-		if err != nil {
-			log.Printf("❌ 파일 삭제 실패 [%s]: %v", fileID, err)
-			response.FailedFiles = append(response.FailedFiles, fileID)
-			response.Errors = append(response.Errors, fmt.Sprintf("파일 삭제 실패 [%s]: %v", fileID, err))
-			
-			// Call deletion callback - mark as failed
-			if req.DeletionCallback != nil {
-				req.DeletionCallback(fileID, "failed")
-			}
-		} else {
-			log.Printf("✅ 파일 삭제 완료: %s", fileID)
-			response.DeletedFiles = append(response.DeletedFiles, fileID)
-			response.TotalDeleted++
-			
-			// Call deletion callback - mark as deleted
-			if req.DeletionCallback != nil {
-				req.DeletionCallback(fileID, "deleted")
-			}
-		}
-
-		// Update progress
-		progress.UpdateProgress(i+1, fmt.Sprintf("파일 삭제 중... (%d/%d)", i+1, len(req.FileIDs)))
-		uc.progressService.UpdateOperation(ctx, progress.ID, i+1, progress.CurrentStep)
 
 		// Call progress callback
 		if req.ProgressCallback != nil {
@@ -998,6 +1002,128 @@ func (uc *FolderComparisonUseCase) cleanupEmptyFolders(ctx context.Context, fold
 	return deletedFolders
 }
 
+// collectParentFoldersFromComparison collects parent folder information from comparison result
+func (uc *FolderComparisonUseCase) collectParentFoldersFromComparison(ctx context.Context, comparison *entities.ComparisonResult, fileIDs []string, affectedFolders map[string]bool) {
+	// Create a map of file IDs to delete for quick lookup
+	deleteFileMap := make(map[string]bool)
+	for _, fileID := range fileIDs {
+		deleteFileMap[fileID] = true
+	}
+	
+	// Extract parent folder information from duplicate files in comparison result
+	for _, file := range comparison.DuplicateFiles {
+		if deleteFileMap[file.ID] && len(file.Parents) > 0 {
+			affectedFolders[file.Parents[0]] = true
+		}
+	}
+	
+	log.Printf("📁 수집된 부모 폴더 %d개 (파일 메타데이터에서)", len(affectedFolders))
+}
+
+// deleteBatchFiles deletes a batch of files concurrently
+func (uc *FolderComparisonUseCase) deleteBatchFiles(ctx context.Context, fileIDs []string, req *DeleteDuplicateFilesRequest, response *DeleteDuplicateFilesResponse) {
+	// Use goroutines for concurrent deletion
+	jobs := make(chan string, len(fileIDs))
+	results := make(chan deleteResult, len(fileIDs))
+	
+	// Worker pool for parallel deletion
+	const numWorkers = 5 // Limit concurrent deletions to avoid rate limits
+	for w := 0; w < numWorkers; w++ {
+		go func() {
+			for fileID := range jobs {
+				result := uc.deleteFileWithCallback(ctx, fileID, req.DeletionCallback)
+				results <- result
+			}
+		}()
+	}
+	
+	// Send jobs
+	for _, fileID := range fileIDs {
+		jobs <- fileID
+	}
+	close(jobs)
+	
+	// Collect results
+	for range fileIDs {
+		result := <-results
+		
+		if result.err != nil {
+			log.Printf("❌ 파일 삭제 실패 [%s]: %v", result.fileID, result.err)
+			response.FailedFiles = append(response.FailedFiles, result.fileID)
+			response.Errors = append(response.Errors, fmt.Sprintf("파일 삭제 실패 [%s]: %v", result.fileID, result.err))
+		} else {
+			log.Printf("✅ 파일 삭제 완료: %s", result.fileID)
+			response.DeletedFiles = append(response.DeletedFiles, result.fileID)
+			response.TotalDeleted++
+		}
+	}
+}
+
+// deleteResult represents the result of a single file deletion
+type deleteResult struct {
+	fileID string
+	err    error
+}
+
+// deleteFileWithCallback deletes a single file with callback notifications
+func (uc *FolderComparisonUseCase) deleteFileWithCallback(ctx context.Context, fileID string, callback func(string, string)) deleteResult {
+	// Call deletion callback - mark as deleting
+	if callback != nil {
+		callback(fileID, "deleting")
+	}
+	
+	// Delete file
+	err := uc.storageProvider.DeleteFile(ctx, fileID)
+	
+	// Call deletion callback with result
+	if callback != nil {
+		if err != nil {
+			callback(fileID, "failed")
+		} else {
+			callback(fileID, "deleted")
+		}
+	}
+	
+	return deleteResult{
+		fileID: fileID,
+		err:    err,
+	}
+}
+
+// saveFilesToDatabase saves file metadata to database to satisfy foreign key constraints
+func (uc *FolderComparisonUseCase) saveFilesToDatabase(ctx context.Context, files []*entities.File) error {
+	if len(files) == 0 {
+		return nil
+	}
+
+	log.Printf("💾 데이터베이스에 %d개 파일 메타데이터 저장", len(files))
+	
+	// Save files in batches to avoid overwhelming the database
+	const batchSize = 100
+	for i := 0; i < len(files); i += batchSize {
+		end := i + batchSize
+		if end > len(files) {
+			end = len(files)
+		}
+		
+		batch := files[i:end]
+		for _, file := range batch {
+			// Use upsert to handle duplicates gracefully
+			err := uc.fileRepo.Save(ctx, file)
+			if err != nil {
+				// Log error but continue with other files
+				log.Printf("⚠️ 파일 저장 실패 [%s]: %v", file.ID, err)
+				continue
+			}
+		}
+		
+		log.Printf("📁 배치 저장 완료: %d/%d", end, len(files))
+	}
+	
+	log.Printf("✅ 모든 파일 메타데이터 저장 완료")
+	return nil
+}
+
 // ExtractFolderIdFromUrl extracts Google Drive folder ID from URL
 func (uc *FolderComparisonUseCase) ExtractFolderIdFromUrl(url string) (string, error) {
 	// Google Drive folder URL patterns:
@@ -1029,6 +1155,173 @@ func (uc *FolderComparisonUseCase) ExtractFolderIdFromUrl(url string) (string, e
 
 	log.Printf("❌ Failed to extract folder ID from URL: %s", url)
 	return "", fmt.Errorf("Google Drive 폴더 URL에서 ID를 추출할 수 없습니다: %s", url)
+}
+
+// FindDuplicatesInSingleFolderRequest represents the request for finding duplicates in a single folder
+type FindDuplicatesInSingleFolderRequest struct {
+	FolderID          string `json:"folderId"`
+	IncludeSubfolders bool   `json:"includeSubfolders"`
+	MinFileSize       int64  `json:"minFileSize"`
+	ForceNewScan      bool   `json:"forceNewScan"`
+}
+
+// FindDuplicatesInSingleFolderResponse represents the response for single folder duplicate finding
+type FindDuplicatesInSingleFolderResponse struct {
+	Progress        *entities.Progress         `json:"progress"`
+	DuplicateGroups []*entities.DuplicateGroup `json:"duplicateGroups,omitempty"`
+	TotalFiles      int                        `json:"totalFiles"`
+	DuplicateFiles  int                        `json:"duplicateFiles"`
+	WastedSpace     int64                      `json:"wastedSpace"`
+	Errors          []string                   `json:"errors,omitempty"`
+}
+
+// FindDuplicatesInSingleFolder finds duplicate files within a single folder
+func (uc *FolderComparisonUseCase) FindDuplicatesInSingleFolder(ctx context.Context, req *FindDuplicatesInSingleFolderRequest) (*FindDuplicatesInSingleFolderResponse, error) {
+	log.Printf("📁 단일 폴더 내 중복 파일 검색 시작: %s", req.FolderID)
+
+	// Create progress tracker
+	progress, err := uc.progressService.StartOperation(ctx, "single_folder_duplicates", 0)
+	if err != nil {
+		return nil, fmt.Errorf("진행 상황 생성 실패: %w", err)
+	}
+
+	// Set metadata for checkpoint
+	progress.SetMetadata("folderId", req.FolderID)
+	progress.SetMetadata("includeSubfolders", req.IncludeSubfolders)
+	progress.SetMetadata("minFileSize", req.MinFileSize)
+	progress.SetMetadata("currentPhase", "initialized")
+
+	// Initialize response
+	response := &FindDuplicatesInSingleFolderResponse{
+		Progress: progress,
+		Errors:   make([]string, 0),
+	}
+
+	// Start scanning in background
+	go uc.performSingleFolderDuplicateScan(context.Background(), req, progress, response)
+
+	return response, nil
+}
+
+// performSingleFolderDuplicateScan performs the actual duplicate scanning in background
+func (uc *FolderComparisonUseCase) performSingleFolderDuplicateScan(ctx context.Context, req *FindDuplicatesInSingleFolderRequest, progress *entities.Progress, response *FindDuplicatesInSingleFolderResponse) {
+	defer func() {
+		log.Printf("🔚 백그라운드 단일 폴더 중복 검색 작업 종료 - Progress ID: %d", progress.ID)
+	}()
+
+	// Phase 1: Scan folder for files
+	progress.SetMetadata("currentPhase", "scanning_files")
+	uc.progressService.UpdateOperation(ctx, progress.ID, 0, "폴더 파일 스캔 중...")
+
+	files, err := uc.getFilesRecursive(ctx, req.FolderID, req.IncludeSubfolders)
+	if err != nil {
+		log.Printf("❌ 폴더 파일 스캔 실패: %v", err)
+		uc.progressService.FailOperation(ctx, progress.ID, fmt.Sprintf("폴더 파일 스캔 실패: %v", err))
+		return
+	}
+
+	log.Printf("📊 스캔 완료: %d개 파일 발견", len(files))
+	response.TotalFiles = len(files)
+
+	// Filter files by size if specified
+	if req.MinFileSize > 0 {
+		filteredFiles := make([]*entities.File, 0)
+		for _, file := range files {
+			if file.Size >= req.MinFileSize {
+				filteredFiles = append(filteredFiles, file)
+			}
+		}
+		files = filteredFiles
+		log.Printf("📏 크기 필터 적용: %d개 파일 (최소 %d bytes)", len(files), req.MinFileSize)
+	}
+
+	if len(files) == 0 {
+		log.Printf("⚠️ 스캔할 파일이 없습니다")
+		uc.progressService.CompleteOperation(ctx, progress.ID)
+		return
+	}
+
+	// Phase 2: Save files to database for hash calculation
+	progress.SetMetadata("currentPhase", "saving_files")
+	uc.progressService.UpdateOperation(ctx, progress.ID, 0, "파일 메타데이터 저장 중...")
+
+	err = uc.saveFilesToDatabase(ctx, files)
+	if err != nil {
+		log.Printf("❌ 파일 메타데이터 저장 실패: %v", err)
+		uc.progressService.FailOperation(ctx, progress.ID, fmt.Sprintf("파일 메타데이터 저장 실패: %v", err))
+		return
+	}
+
+	// Phase 3: Calculate hashes and find duplicates
+	progress.SetMetadata("currentPhase", "calculating_hashes")
+	progress.TotalItems = len(files)
+	uc.progressService.UpdateOperation(ctx, progress.ID, 0, "파일 해시 계산 및 중복 검색 중...")
+
+	duplicateGroups, err := uc.findDuplicatesWithHashes(ctx, files, progress)
+	if err != nil {
+		log.Printf("❌ 중복 파일 검색 실패: %v", err)
+		uc.progressService.FailOperation(ctx, progress.ID, fmt.Sprintf("중복 파일 검색 실패: %v", err))
+		return
+	}
+
+	// Calculate statistics
+	totalDuplicateFiles := 0
+	wastedSpace := int64(0)
+	for _, group := range duplicateGroups {
+		if group.Count > 1 {
+			totalDuplicateFiles += group.Count
+			wastedSpace += int64(group.Count-1) * group.Files[0].Size
+		}
+	}
+
+	response.DuplicateGroups = duplicateGroups
+	response.DuplicateFiles = totalDuplicateFiles
+	response.WastedSpace = wastedSpace
+
+	log.Printf("✅ 단일 폴더 중복 검색 완료: %d개 중복 그룹, %d개 중복 파일, %d bytes 절약 가능", 
+		len(duplicateGroups), totalDuplicateFiles, wastedSpace)
+
+	uc.progressService.CompleteOperation(ctx, progress.ID)
+}
+
+// findDuplicatesWithHashes finds duplicate files by calculating hashes
+func (uc *FolderComparisonUseCase) findDuplicatesWithHashes(ctx context.Context, files []*entities.File, progress *entities.Progress) ([]*entities.DuplicateGroup, error) {
+	hashToFiles := make(map[string][]*entities.File)
+	
+	for i, file := range files {
+		// Calculate hash if not already calculated
+		if file.Hash == "" {
+			hash, err := uc.hashService.CalculateFileHash(ctx, file.ID)
+			if err != nil {
+				log.Printf("⚠️ 파일 해시 계산 실패 (건너뜀): %s - %v", file.Name, err)
+				continue
+			}
+			file.Hash = hash
+
+			// Update file in database
+			uc.fileRepo.Update(ctx, file)
+		}
+
+		// Group files by hash
+		hashToFiles[file.Hash] = append(hashToFiles[file.Hash], file)
+
+		// Update progress
+		uc.progressService.UpdateOperation(ctx, progress.ID, i+1, fmt.Sprintf("해시 계산 중... (%d/%d)", i+1, len(files)))
+	}
+
+	// Create duplicate groups from files with same hash
+	duplicateGroups := make([]*entities.DuplicateGroup, 0)
+	for hash, groupFiles := range hashToFiles {
+		if len(groupFiles) > 1 {
+			group := entities.NewDuplicateGroup(hash)
+			for _, file := range groupFiles {
+				group.AddFile(file)
+			}
+			duplicateGroups = append(duplicateGroups, group)
+		}
+	}
+
+	return duplicateGroups, nil
 }
 
 // SetConfiguration sets the use case configuration

@@ -399,11 +399,29 @@ function createDuplicateGroupHTML(group, index) {
     
     if (group.files && group.files.length > 0) {
         html += '<div class="group-files" style="border-top: 1px solid #eee; padding-top: 10px;">';
-        html += `<div style="margin-bottom: 5px; font-weight: bold; color: #555;">중복 파일 목록 (${group.files.length}개):</div>`;
-        group.files.forEach((file, fileIndex) => {
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="font-weight: bold; color: #555;">중복 파일 목록 (${group.files.length}개):</div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="font-size: 12px; color: #666;">정렬:</span>
+                    <select id="sort-files" onchange="sortFiles(this.value)" style="padding: 2px 5px; font-size: 12px; border: 1px solid #ddd; border-radius: 3px;">
+                        <option value="created-asc">생성일 (오래된 순)</option>
+                        <option value="created-desc">생성일 (최신 순)</option>
+                        <option value="modified-asc">수정일 (오래된 순)</option>
+                        <option value="modified-desc">수정일 (최신 순)</option>
+                        <option value="name-asc">이름 (가나다 순)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="files-container">
+        `;
+        
+        // 파일을 생성일 오래된 순으로 기본 정렬
+        const sortedFiles = sortFilesByCreatedDate(group.files);
+        sortedFiles.forEach((file, fileIndex) => {
             html += createFileItemHTML(file, fileIndex);
         });
-        html += '</div>';
+        html += '</div></div>';
     }
     
     html += '</div>';
@@ -412,22 +430,32 @@ function createDuplicateGroupHTML(group, index) {
 }
 
 function createFileItemHTML(file, fileIndex) {
+    const createdDate = file.createdTime ? new Date(file.createdTime).toLocaleDateString('ko-KR') : '날짜 정보 없음';
     const modifiedDate = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString('ko-KR') : '날짜 정보 없음';
     const mimeTypeDisplay = file.mimeType || 'application/octet-stream';
     const fileTypeIcon = getFileTypeIcon(mimeTypeDisplay);
     
+    // 첫 번째 파일 (가장 오래된 원본)을 다르게 표시
+    const isOriginal = fileIndex === 0;
+    const borderColor = isOriginal ? '#10b981' : '#e0e0e0';
+    const backgroundColor = isOriginal ? '#f0fdf4' : 'white';
+    const originalBadge = isOriginal ? '<span style="background: #10b981; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 8px;">원본 추천</span>' : '';
+    
     return `
-        <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+        <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 5px 0; background: ${backgroundColor}; border: 2px solid ${borderColor}; border-radius: 5px; position: relative;">
             <div class="file-info" style="flex: 1; min-width: 0;">
                 <div class="file-name" style="font-weight: 500; color: #333; display: flex; align-items: center;">
                     <span style="margin-right: 8px;">${fileTypeIcon}</span>
                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${file.name || '알 수 없는 파일'}</span>
+                    ${originalBadge}
                 </div>
                 <div class="file-details" style="font-size: 12px; color: #666; margin-top: 2px;">
-                    <span>수정일: ${modifiedDate}</span> | 
-                    <span>타입: ${mimeTypeDisplay}</span>
+                    <span style="font-weight: 600; color: #2563eb;">📅 생성일: ${createdDate}</span> | 
+                    <span>✏️ 수정일: ${modifiedDate}</span> | 
+                    <span>📄 타입: ${mimeTypeDisplay}</span>
                     ${file.webViewLink ? ` | <a href="${file.webViewLink}" target="_blank" style="color: #4285f4;">Drive에서 보기</a>` : ''}
                 </div>
+                ${isOriginal ? '<div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 3px;">💡 가장 오래된 파일로 원본일 가능성이 높습니다.</div>' : ''}
             </div>
             <div class="file-size" style="font-weight: bold; color: #555; margin-left: 10px;">
                 ${APIUtils.formatFileSize(file.size || 0)}
@@ -446,6 +474,69 @@ function getFileTypeIcon(mimeType) {
     if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return '📊';
     if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📽️';
     return '📄';
+}
+
+// 파일 정렬 함수들
+function sortFilesByCreatedDate(files, ascending = true) {
+    return [...files].sort((a, b) => {
+        const dateA = new Date(a.createdTime || '1970-01-01');
+        const dateB = new Date(b.createdTime || '1970-01-01');
+        return ascending ? dateA - dateB : dateB - dateA;
+    });
+}
+
+function sortFilesByModifiedDate(files, ascending = true) {
+    return [...files].sort((a, b) => {
+        const dateA = new Date(a.modifiedTime || '1970-01-01');
+        const dateB = new Date(b.modifiedTime || '1970-01-01');
+        return ascending ? dateA - dateB : dateB - dateA;
+    });
+}
+
+function sortFilesByName(files, ascending = true) {
+    return [...files].sort((a, b) => {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        return ascending ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    });
+}
+
+// 현재 표시된 그룹의 파일들을 저장할 변수
+let currentGroupFiles = [];
+
+// 파일 정렬 함수 (드롭다운에서 호출)
+function sortFiles(sortType) {
+    let sortedFiles;
+    
+    switch(sortType) {
+        case 'created-asc':
+            sortedFiles = sortFilesByCreatedDate(currentGroupFiles, true);
+            break;
+        case 'created-desc':
+            sortedFiles = sortFilesByCreatedDate(currentGroupFiles, false);
+            break;
+        case 'modified-asc':
+            sortedFiles = sortFilesByModifiedDate(currentGroupFiles, true);
+            break;
+        case 'modified-desc':
+            sortedFiles = sortFilesByModifiedDate(currentGroupFiles, false);
+            break;
+        case 'name-asc':
+            sortedFiles = sortFilesByName(currentGroupFiles, true);
+            break;
+        default:
+            sortedFiles = sortFilesByCreatedDate(currentGroupFiles, true);
+    }
+    
+    // 파일 목록 컨테이너를 다시 렌더링
+    const container = document.getElementById('files-container');
+    if (container) {
+        let html = '';
+        sortedFiles.forEach((file, fileIndex) => {
+            html += createFileItemHTML(file, fileIndex);
+        });
+        container.innerHTML = html;
+    }
 }
 
 let currentGroupId = null; // 현재 표시 중인 그룹 ID 저장
@@ -469,6 +560,9 @@ async function showGroupDetails(groupId) {
 function displayGroupDetailsModal(group) {
     const modal = document.getElementById('group-details-modal');
     const content = document.getElementById('group-details-content');
+    
+    // 현재 그룹의 파일들을 전역 변수에 저장 (정렬을 위해)
+    currentGroupFiles = group.files || [];
     
     // 그룹 요약 정보 생성
     const wastedSpace = group.files && group.files.length > 0 ? 

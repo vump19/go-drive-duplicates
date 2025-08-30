@@ -19,6 +19,7 @@ type Config struct {
 	GoogleDrive GoogleDriveConfig `json:"googleDrive" yaml:"google_drive"`
 	Hash        HashConfig        `json:"hash" yaml:"hash"`
 	Processing  ProcessingConfig  `json:"processing" yaml:"processing"`
+	Deletion    DeletionConfig    `json:"deletion" yaml:"deletion"`
 	Logging     LoggingConfig     `json:"logging" yaml:"logging"`
 	Security    SecurityConfig    `json:"security" yaml:"security"`
 	Environment string            `json:"environment,omitempty" yaml:"environment,omitempty"`
@@ -100,6 +101,14 @@ type ProcessingConfig struct {
 	WorkerCount  int    `json:"workerCount" yaml:"worker_count"`
 	SaveInterval string `json:"saveInterval,omitempty" yaml:"save_interval,omitempty"`
 	MaxRetries   int    `json:"maxRetries" yaml:"max_retries"`
+}
+
+// DeletionConfig contains file deletion optimization configuration
+type DeletionConfig struct {
+	BatchSize              int  `json:"batchSize" yaml:"batch_size"`
+	WorkerCount            int  `json:"workerCount" yaml:"worker_count"`  
+	ProgressUpdateInterval int  `json:"progressUpdateInterval" yaml:"progress_update_interval"`
+	EnableParallel         bool `json:"enableParallel" yaml:"enable_parallel"`
 }
 
 // GetSaveInterval returns parsed save interval duration

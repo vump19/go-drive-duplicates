@@ -21,6 +21,8 @@ SOLID 원칙과 클린 아키텍처 패턴을 적용하여 확장 가능하고 �
 - 🗑️ **스마트 삭제**: 중복 그룹 단위 삭제 및 정규식 패턴 기반 일괄 삭제
 - ⚡ **상태 관리**: 진행 상황 추적 및 작업 재개 기능
 - 🔒 **안전한 인증**: OAuth 2.0 기반 Google Drive 접근
+- 📂 **단일 폴더 중복 검색**: 특정 폴더 내에서만 중복 파일 검출 및 선택적 삭제
+- ✅ **원본 파일 보호**: 생성일 기준 자동 원본 추천 및 삭제 방지
 
 ## 🖥️ 포트 설정
 
@@ -188,7 +190,18 @@ curl -X POST http://localhost:8080/api/compare/folders \
 curl http://localhost:8080/api/compare/progress
 ```
 
-#### 5. 파일 정리
+#### 5. 단일 폴더 중복 검색
+```bash
+# 단일 폴더 내 중복 파일 검색
+curl -X POST http://localhost:8080/api/compare/single-folder/duplicates \
+  -H "Content-Type: application/json" \
+  -d '{"folderId": "folder-id", "includeSubfolders": true, "minFileSize": 1048576}'
+
+# 단일 폴더 중복 검색 진행 상황 확인
+curl http://localhost:8080/api/compare/single-folder/progress?progressId=123
+```
+
+#### 6. 파일 정리
 ```bash
 # 특정 파일들 삭제
 curl -X POST http://localhost:8080/api/cleanup/files \
@@ -264,6 +277,8 @@ curl http://localhost:8080/api/cleanup/progress
 - ✅ API 오류 복구 및 재시도 로직
 - ✅ SQLite 데이터베이스 자동 마이그레이션
 - ✅ **외래 키 제약 조건 해결**: 안전한 중복 그룹 삭제
+- ✅ **단일 폴더 중복 검색**: 특정 폴더 내 중복 파일 검출 및 선택적 삭제
+- ✅ **원본 파일 보호**: 생성일 기준 자동 원본 추천 및 체크박스 기반 안전 삭제
 
 ## 개발 히스토리
 

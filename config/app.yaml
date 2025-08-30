@@ -42,6 +42,13 @@ processing:
   save_interval: 30s
   max_retries: 3
 
+# File Deletion Configuration  
+deletion:
+  batch_size: 10           # Number of files to process in each batch
+  worker_count: 5          # Number of parallel deletion workers
+  progress_update_interval: 5  # Update progress every N batches
+  enable_parallel: true    # Enable parallel file deletion
+
 # Security Configuration
 security:
   enable_cors: true

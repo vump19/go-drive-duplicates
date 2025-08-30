@@ -260,11 +260,36 @@ func (g *GoogleDriveAdapter) DeleteFile(ctx context.Context, fileID string) erro
 }
 
 func (g *GoogleDriveAdapter) DeleteFiles(ctx context.Context, fileIDs []string) error {
-	var errors []string
+	if len(fileIDs) == 0 {
+		return nil
+	}
 
+	// Use parallel deletion with worker pool to respect rate limits
+	const maxWorkers = 5 // Conservative limit to avoid hitting Google API rate limits
+	jobs := make(chan string, len(fileIDs))
+	results := make(chan error, len(fileIDs))
+
+	// Start worker pool
+	for w := 0; w < maxWorkers; w++ {
+		go func() {
+			for fileID := range jobs {
+				err := g.DeleteFile(ctx, fileID)
+				results <- err
+			}
+		}()
+	}
+
+	// Send jobs
 	for _, fileID := range fileIDs {
-		if err := g.DeleteFile(ctx, fileID); err != nil {
-			errors = append(errors, fmt.Sprintf("failed to delete file %s: %v", fileID, err))
+		jobs <- fileID
+	}
+	close(jobs)
+
+	// Collect results
+	var errors []string
+	for i := 0; i < len(fileIDs); i++ {
+		if err := <-results; err != nil {
+			errors = append(errors, err.Error())
 		}
 	}
 

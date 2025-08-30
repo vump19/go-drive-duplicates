@@ -93,6 +93,10 @@ func (app *Application) setupRoutes() {
 	mux.HandleFunc("/api/compare/resume", app.wrapHandler(app.container.ComparisonController.ResumeComparison))
 	mux.HandleFunc("/api/compare/pending", app.wrapHandler(app.container.ComparisonController.GetPendingComparisons))
 	
+	// API routes - Single folder duplicate detection
+	mux.HandleFunc("/api/compare/single-folder/duplicates", app.wrapHandler(app.container.ComparisonController.FindDuplicatesInSingleFolder))
+	mux.HandleFunc("/api/compare/single-folder/progress", app.wrapHandler(app.container.ComparisonController.GetSingleFolderDuplicateProgress))
+	
 	// API routes - Folder deletion operations
 	mux.HandleFunc("/api/compare/delete/target-folder", app.wrapHandler(app.container.ComparisonController.DeleteTargetFolder))
 	mux.HandleFunc("/api/compare/delete/duplicate-files", app.wrapHandler(app.container.ComparisonController.DeleteDuplicateFiles))
@@ -364,6 +368,18 @@ func (app *Application) handleHomePage(w http.ResponseWriter, r *http.Request) {
             <div class="endpoint compare">
                 <span class="method">GET</span> <span class="path">/api/compare/result/load</span>
                 <div class="description">Load saved comparison result</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Single Folder Duplicate Detection</h2>
+            <div class="endpoint compare">
+                <span class="method">POST</span> <span class="path">/api/compare/single-folder/duplicates</span>
+                <div class="description">Find duplicates within a single folder</div>
+            </div>
+            <div class="endpoint compare">
+                <span class="method">GET</span> <span class="path">/api/compare/single-folder/progress</span>
+                <div class="description">Get single folder duplicate detection progress</div>
             </div>
         </div>
         

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"go-drive-duplicates/internal/usecases"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -398,6 +397,88 @@ func (c *ComparisonController) ExtractFolderIdFromUrl(w http.ResponseWriter, r *
 		"url":      url,
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// FindDuplicatesInSingleFolder handles the single folder duplicate detection endpoint
+func (c *ComparisonController) FindDuplicatesInSingleFolder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req usecases.FindDuplicatesInSingleFolderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if req.FolderID == "" {
+		http.Error(w, "FolderID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Create context without timeout for folder scanning (large folders may take a long time)
+	ctx := context.Background()
+
+	// Execute use case
+	response, err := c.folderComparisonUseCase.FindDuplicatesInSingleFolder(ctx, &req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// GetSingleFolderDuplicateProgress handles the get single folder duplicate progress endpoint
+func (c *ComparisonController) GetSingleFolderDuplicateProgress(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse progress ID from query parameter
+	progressIDStr := r.URL.Query().Get("progressId")
+	if progressIDStr == "" {
+		http.Error(w, "Progress ID is required", http.StatusBadRequest)
+		return
+	}
+
+	progressID, err := strconv.Atoi(progressIDStr)
+	if err != nil {
+		http.Error(w, "Invalid progress ID", http.StatusBadRequest)
+		return
+	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Create request for getting comparison progress (reuse existing structure)
+	req := &usecases.GetComparisonProgressRequest{
+		ComparisonID: progressID,
+	}
+
+	// Execute use case
+	progress, err := c.folderComparisonUseCase.GetComparisonProgress(ctx, req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(progress); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
