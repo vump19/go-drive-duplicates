@@ -1,0 +1,357 @@
+/* ── Admin Page 공통 스타일 ── */
+/* 각 독립 페이지에서 import하여 사용 */
+
+:root {
+    --bg-page: #f4f5f7;
+    --bg-card: #ffffff;
+    --border: #e3e5e8;
+    --border-hover: #b5b8bf;
+    --text-primary: #2b2d31;
+    --text-secondary: #80848e;
+    --text-label: #4e5058;
+    --accent: #5865f2;
+    --accent-hover: #4752c4;
+    --success: #3ba55d;
+    --danger: #ed4245;
+    --warning: #faa61a;
+    --input-border: #d5d7db;
+    --input-focus: #5865f2;
+    --input-focus-ring: rgba(88, 101, 242, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: var(--bg-page) !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+/* ── iframe 모드: 헤더 숨김 ── */
+.iframe-mode .page-header { display: none !important; }
+.iframe-mode .page-container { padding-top: 0; }
+
+/* ── 페이지 헤더 (직접 접근 시) ── */
+.page-header {
+    background: #2b2d31;
+    color: #e0e1e5;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.page-header .page-title {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.page-header .header-nav {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+.page-header .header-nav a {
+    color: #b5bac1;
+    text-decoration: none;
+    font-size: 0.82rem;
+    padding: 5px 12px;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+.page-header .header-nav a:hover {
+    background: rgba(255,255,255,0.08);
+    color: #e0e1e5;
+}
+
+/* ── 페이지 컨테이너 ── */
+.page-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+}
+.page-container.wide {
+    max-width: 1400px;
+}
+
+/* ── 콘텐츠 카드 ── */
+.content-card {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+}
+.content-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.content-card-body {
+    padding: 20px;
+}
+
+/* ── 폼 요소 ── */
+.form-group {
+    margin-bottom: 16px;
+}
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-label);
+    font-size: 0.9rem;
+}
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+.form-hint {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+}
+
+/* ── 버튼 ── */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.btn:hover {
+    background: var(--bg-page);
+    border-color: var(--border-hover);
+}
+.btn-primary, .btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+.btn-primary:hover, .btn.primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+.btn-success, .btn.success {
+    background: var(--success);
+    color: #fff;
+    border-color: var(--success);
+}
+.btn-danger, .btn.danger {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+}
+.btn-warning, .btn.warning {
+    background: var(--warning);
+    color: #fff;
+    border-color: var(--warning);
+}
+
+/* ── action-btn 오버라이드 (index.css 그라데이션 → 단색) ── */
+.action-btn {
+    background: var(--accent) !important;
+    border-radius: 8px;
+    box-shadow: none !important;
+}
+.action-btn:hover {
+    background: var(--accent-hover) !important;
+    transform: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+.action-btn.secondary, .action-btn.success {
+    background: var(--success) !important;
+}
+.action-btn.secondary:hover, .action-btn.success:hover {
+    background: #2d8049 !important;
+}
+.action-btn.warning, .action-btn.tertiary {
+    background: var(--warning) !important;
+}
+.action-btn.warning:hover, .action-btn.tertiary:hover {
+    background: #e09515 !important;
+}
+.action-btn.danger {
+    background: var(--danger) !important;
+}
+.action-btn.danger:hover {
+    background: #d63a3d !important;
+}
+.action-btn.info {
+    background: #7c8aff !important;
+}
+.action-btn.info:hover {
+    background: #6370e0 !important;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ── 프로그레스 바 ── */
+.progress-bar-wrap {
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+.progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+/* ── 알림 ── */
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+}
+.alert-info { background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; }
+.alert-success { background: #ecfdf5; border: 1px solid #86efac; color: #166534; }
+.alert-warning { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+.alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+/* ── 테이블 ── */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.data-table th, .data-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+}
+.data-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.data-table tr:hover { background: var(--bg-page); }
+
+/* ── 도움말 패널 (접었다 펼 수 있음) ── */
+.help-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.help-panel-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: background 0.15s;
+}
+.help-panel-toggle:hover {
+    background: var(--bg-page);
+}
+.help-panel-toggle i.fa-chevron-down {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+}
+.help-panel.open .help-panel-toggle i.fa-chevron-down {
+    transform: rotate(180deg);
+}
+.help-panel-body {
+    display: none;
+    padding: 0 20px 18px;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+.help-panel.open .help-panel-body {
+    display: block;
+}
+.help-panel-body p {
+    margin: 0 0 10px;
+}
+.help-panel-body ul {
+    margin: 0 0 10px;
+    padding-left: 20px;
+}
+.help-panel-body li {
+    margin-bottom: 4px;
+}
+.help-panel-body strong {
+    color: var(--text-primary);
+}
+.help-panel-body code {
+    background: var(--bg-page);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+/* ── 섹션 구분선 ── */
+.section-divider {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #d5d7db; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }

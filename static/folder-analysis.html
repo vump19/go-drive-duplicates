@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폴더 분석 - Google Drive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css?v=20260328e">
+    <link rel="stylesheet" href="css/admin-page.css?v=20260328e">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title"><i class="fas fa-sitemap"></i> 폴더 분석</div>
+        <div class="header-nav">
+            <a href="index.html"><i class="fas fa-home"></i> 대시보드</a>
+            <a href="compare.html">폴더 비교</a>
+            <a href="explorer.html">파일 탐색기</a>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="help-panel">
+            <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+                <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="help-panel-body">
+                <p><strong>폴더 분석</strong>은 Google Drive 폴더의 구조를 분석하고, 빈 폴더를 찾아 정리하는 도구입니다.</p>
+                <p><strong>사용 방법:</strong></p>
+                <ul>
+                    <li><strong>폴더 구조 분석</strong>: 폴더 URL을 입력하면 하위 폴더 구조, 크기, 파일 수를 트리 형태로 표시합니다. 빈 폴더를 발견하면 선택적으로 휴지통으로 이동할 수 있습니다.</li>
+                    <li><strong>특정 폴더명 검색</strong>: 특정 이름의 폴더(예: <code>.svn</code>, <code>node_modules</code>)를 검색하여 일괄 정리합니다.</li>
+                </ul>
+                <p><strong>옵션:</strong></p>
+                <ul>
+                    <li><strong>제외 패턴</strong>: 분석에서 제외할 폴더명을 쉼표로 구분하여 입력</li>
+                    <li><strong>빠른 검색</strong>: 폴더 크기 계산을 생략하여 검색 속도 향상</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 폴더 분석 섹션 -->
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2><i class="fas fa-search"></i> 폴더 구조 분석</h2>
+            </div>
+            <div class="content-card-body">
+                <div class="form-group">
+                    <label for="folderAnalysisUrl">폴더 URL 또는 ID:</label>
+                    <input type="text" id="folderAnalysisUrl" placeholder="Google Drive 폴더 URL을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="excludeFolderPatterns">
+                        <i class="fas fa-filter"></i> 제외할 폴더 (선택사항):
+                    </label>
+                    <input type="text" id="excludeFolderPatterns" placeholder="예: backup, temp, cache (쉼표로 구분)">
+                    <small class="form-hint">폴더 이름에 입력한 문구가 포함되면 분석에서 제외됩니다 (대소문자 무시)</small>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="analyzeFolderStructure()">
+                        <i class="fas fa-search"></i> 폴더 분석
+                    </button>
+                    <button class="btn" onclick="cleanupEmptySubfolders()">
+                        <i class="fas fa-broom"></i> 빈 하위폴더 정리
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 특정 폴더명 검색/삭제 섹션 -->
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2><i class="fas fa-search"></i> 특정 폴더명 검색</h2>
+            </div>
+            <div class="content-card-body">
+                <div class="form-group">
+                    <label for="searchRootFolderUrl">
+                        <i class="fas fa-folder-open" style="color: #3b82f6;"></i> 검색 대상 폴더:
+                    </label>
+                    <input type="text" id="searchRootFolderUrl" placeholder="Google Drive 폴더 URL 또는 ID (이 폴더 하위에서 검색)">
+                    <small class="form-hint">지정한 폴더와 그 하위 폴더에서만 검색합니다</small>
+                </div>
+                <div class="form-group">
+                    <label for="deleteFolderName">검색할 폴더명 (정확히 일치):</label>
+                    <input type="text" id="deleteFolderName" placeholder="예: .svn, .Trash-1000, node_modules">
+                    <small class="form-hint">입력한 이름과 정확히 일치하는 모든 폴더를 검색합니다</small>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="skipFolderStats">
+                        <span><i class="fas fa-bolt" style="color: #f59e0b;"></i> 빠른 검색 (통계 계산 생략)</span>
+                    </label>
+                    <small class="form-hint">폴더 크기와 파일 수 계산을 생략하여 검색 속도를 높입니다</small>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-warning" onclick="searchFoldersByName()">
+                        <i class="fas fa-search"></i> 폴더 검색
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 폴더 분석 모달 -->
+    <div id="folderAnalysisModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-folder-tree"></i> 폴더 구조 분석
+                </h2>
+                <button class="modal-close" onclick="closeFolderAnalysisModal()">&times;</button>
+            </div>
+
+            <!-- 분석 진행 상황 -->
+            <div id="folderAnalysisProgress" class="comparison-step" style="display: none;">
+                <div class="step-header">
+                    <i class="fas fa-cog fa-spin"></i> 폴더 분석 진행 중...
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <div class="progress-title">분석 진행률</div>
+                        <div class="progress-percentage" id="analysisProgressPercentage">0%</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="analysisProgressBar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-details" id="analysisProgressText">폴더 분석 시작 중...</div>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-danger" id="cancelAnalysisBtn" onclick="cancelFolderAnalysis()">
+                        <i class="fas fa-stop-circle"></i> 분석 취소
+                    </button>
+                </div>
+            </div>
+
+            <!-- 분석 결과 -->
+            <div id="folderAnalysisResult" class="comparison-step" style="display: none;">
+                <div class="step-header">
+                    <i class="fas fa-check-circle"></i> 분석 결과
+                </div>
+                <div id="folderAnalysisSummary"></div>
+                <div id="folderStructureTree"></div>
+                <div id="emptyFoldersSection" style="display: none;">
+                    <h3><i class="fas fa-folder"></i> 빈 폴더 목록</h3>
+                    <div id="emptyFoldersList"></div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="btn btn-danger" onclick="deleteAllEmptyFolders()">
+                            <i class="fas fa-trash"></i> 모든 빈 폴더 휴지통 이동
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 특정 폴더명 검색/삭제 모달 -->
+    <div id="folderNameSearchModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-search"></i> 특정 폴더명 검색 결과
+                </h2>
+                <button class="modal-close" onclick="closeFolderNameSearchModal()">&times;</button>
+            </div>
+            <div id="folderNameSearchProgress" style="display: none; padding: 40px; text-align: center;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #3b82f6; margin-bottom: 20px;"></i>
+                <div style="font-size: 1.2rem; color: #374151;">폴더 검색 중...</div>
+                <div id="folderNameSearchProgressText" style="color: #6b7280; margin-top: 10px;"></div>
+            </div>
+            <div id="folderNameSearchResult" style="display: none;">
+                <div id="folderNameSearchSummary" style="background: #f8fafc; border-radius: 8px; padding: 15px; margin-bottom: 20px;"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn btn-sm btn-outline" onclick="selectAllSearchedFolders()">
+                            <i class="fas fa-check-square"></i> 전체 선택
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="deselectAllSearchedFolders()">
+                            <i class="fas fa-square"></i> 전체 해제
+                        </button>
+                        <span id="selectedSearchedFoldersCount" style="color: #6b7280;">0개 선택됨</span>
+                    </div>
+                    <button class="btn btn-danger" id="deleteSelectedSearchedFoldersBtn" onclick="deleteSelectedSearchedFolders()" disabled>
+                        <i class="fas fa-trash"></i> 선택 휴지통 이동
+                    </button>
+                </div>
+                <div id="folderNameSearchList" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;"></div>
+            </div>
+            <div id="folderNameDeleteProgress" style="display: none; padding: 40px; text-align: center;">
+                <i class="fas fa-trash-alt" style="font-size: 48px; color: #ef4444; margin-bottom: 20px;"></i>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6; margin-bottom: 10px;" id="folderNameDeletePercentage">0%</div>
+                <div class="progress-bar-container" style="margin: 15px 0;">
+                    <div style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
+                        <div id="folderNameDeleteBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div id="folderNameDeleteText" style="font-size: 1.1rem; color: #374151;">휴지통 이동 중...</div>
+            </div>
+            <div id="folderNameDeleteComplete" style="display: none; padding: 40px; text-align: center;">
+                <i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 20px;"></i>
+                <div style="font-size: 1.2rem; font-weight: 600; color: #374151; margin-bottom: 15px;">완료</div>
+                <div id="folderNameDeleteResult" style="color: #6b7280;"></div>
+                <button class="btn btn-primary" onclick="closeFolderNameSearchModal()" style="margin-top: 20px;">
+                    <i class="fas fa-check"></i> 확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 빈 하위폴더 정리 결과 모달 -->
+    <div id="cleanupResultModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-broom"></i> 빈 하위폴더 정리 결과
+                </h2>
+                <button class="modal-close" onclick="closeCleanupResultModal()">&times;</button>
+            </div>
+            <div id="cleanupProgress" class="comparison-step" style="display: none;">
+                <div class="step-header">
+                    <i class="fas fa-cog fa-spin"></i> 빈 폴더 정리 진행 중...
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <div class="progress-title">정리 진행률</div>
+                        <div class="progress-percentage" id="cleanupProgressPercentage">0%</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="cleanupProgressBar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-details" id="cleanupProgressText">빈 폴더 검색 중...</div>
+                </div>
+            </div>
+            <div id="cleanupResult" class="comparison-step" style="display: none;">
+                <div class="step-header">
+                    <i class="fas fa-check-circle"></i> 정리 완료
+                </div>
+                <div id="cleanupSummary"></div>
+                <div id="deletedFoldersList" style="display: none;">
+                    <h3><i class="fas fa-trash"></i> 휴지통으로 이동된 폴더</h3>
+                    <div id="deletedFoldersContent"></div>
+                </div>
+                <div id="skippedFoldersList" style="display: none;">
+                    <h3><i class="fas fa-exclamation-triangle"></i> 건너뛴 폴더</h3>
+                    <div id="skippedFoldersContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 삭제 확인 모달 -->
+    <div id="delete-confirmation-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeDeleteConfirmationModal()"></div>
+        <div class="modal-content notification-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> 확인</h2>
+                <button class="modal-close" onclick="closeDeleteConfirmationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="delete-confirmation-content"></div>
+                <div id="delete-method-options" class="delete-method-options" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteConfirmationModal()">취소</button>
+                <button class="btn btn-danger" id="confirm-delete-btn" onclick="executeDelete()">
+                    <i class="fas fa-trash"></i> 확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js?v=20260328e"></script>
+    <script src="js/api.js?v=20260328e"></script>
+    <script src="js/folder-resolve.js?v=20260328e"></script>
+    <script src="js/delete-confirmation.js?v=20260328e"></script>
+    <script src="js/folder-analysis.js?v=20260328e"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        ['folderAnalysisUrl', 'searchRootFolderUrl'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) attachFolderResolver(el);
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>문서 통합 - Google Drive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/admin-page.css">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+    <style>
+        .consolidate-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .phase-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding: 0;
+            list-style: none;
+        }
+
+        .phase-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+            color: #80848e;
+        }
+
+        .phase-step::before {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            right: -50%;
+            height: 2px;
+            background: #e3e5e8;
+            z-index: 0;
+        }
+
+        .phase-step:last-child::before {
+            display: none;
+        }
+
+        .phase-step .step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e3e5e8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 6px;
+        }
+
+        .phase-step .step-label {
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .phase-step.active .step-icon {
+            background: #5865f2;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .phase-step.active .step-label {
+            color: #5865f2;
+            font-weight: 600;
+        }
+
+        .phase-step.completed .step-icon {
+            background: #3ba55d;
+            color: white;
+        }
+
+        .phase-step.completed::before {
+            background: #3ba55d;
+        }
+
+        .phase-step.completed .step-label {
+            color: #3ba55d;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .progress-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .progress-stat-item {
+            background: #f4f5f7;
+            border: 1px solid #e3e5e8;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .progress-stat-item .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2b2d31;
+        }
+
+        .progress-stat-item .stat-label {
+            font-size: 12px;
+            color: #80848e;
+            margin-top: 4px;
+        }
+
+        .progress-bar-container {
+            background: #e3e5e8;
+            border-radius: 8px;
+            height: 24px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #5865f2, #4752c4);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+            min-width: 0%;
+        }
+
+        .progress-bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: 600;
+            color: #2b2d31;
+        }
+
+        .progress-message {
+            text-align: center;
+            color: #80848e;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .ext-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .ext-filter-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .ext-filter-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .result-stat {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .result-stat-label {
+            display: block;
+            font-size: 12px;
+            color: #80848e;
+        }
+
+        .result-stat-value {
+            display: block;
+            font-size: 18px;
+            font-weight: 700;
+            color: #0369a1;
+            margin-top: 4px;
+        }
+
+        .output-file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e3e5e8;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .output-file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .output-file-info i {
+            font-size: 24px;
+            color: #5865f2;
+        }
+
+        .output-file-info small {
+            display: block;
+            color: #80848e;
+            font-size: 12px;
+        }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .status-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+        .status-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .status-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+        .status-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+
+        .option-group {
+            margin-bottom: 16px;
+        }
+
+        .option-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+
+        .option-group .option-desc {
+            font-size: 13px;
+            color: #80848e;
+            margin-bottom: 8px;
+        }
+
+        .btn-cancel {
+            background: #ed4245;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-cancel:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title"><i class="fas fa-file-alt"></i> 문서 통합</div>
+        <div class="header-nav">
+            <a href="index.html"><i class="fas fa-home"></i> 대시보드</a>
+            <a href="compare.html">폴더 비교</a>
+            <a href="folder-analysis.html">폴더 분석</a>
+        </div>
+    </div>
+
+    <div class="help-panel">
+        <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+            <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="help-panel-body">
+            <p><strong>문서 통합</strong>은 Google Drive 폴더 내 텍스트 파일들을 비교하고, 중복을 제거한 뒤 하나의 Markdown 파일로 통합하는 도구입니다.</p>
+            <p><strong>사용 방법:</strong></p>
+            <ul>
+                <li>통합할 파일이 있는 Google Drive 폴더 URL을 입력합니다.</li>
+                <li>파일 확장자 필터로 대상 파일을 선택합니다 (기본: 모든 텍스트 파일).</li>
+                <li><strong>문서 통합 시작</strong>을 클릭하면 파일을 분석하고 통합합니다.</li>
+            </ul>
+            <p><strong>옵션:</strong></p>
+            <ul>
+                <li><strong>하위 폴더 포함</strong>: 하위 폴더의 파일도 포함</li>
+                <li><strong>결과 파일 최대 크기</strong>: 초과 시 여러 파일로 분할</li>
+                <li><strong>파일 확장자 필터</strong>: 특정 확장자만 선택하여 통합</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div class="consolidate-container">
+            <div id="statusMessage" class="status-message"></div>
+
+            <!-- 입력 영역 -->
+            <div id="inputSection" class="card">
+                <h2><i class="fas fa-folder-open"></i> 통합 대상 폴더</h2>
+
+                <div class="option-group">
+                    <label for="folderInput">폴더 URL 또는 ID</label>
+                    <input type="text" id="folderInput" class="form-control"
+                           placeholder="https://drive.google.com/drive/folders/... 또는 폴더 ID"
+                           style="width: 100%; padding: 10px; border: 1px solid #e3e5e8; border-radius: 8px; font-size: 14px;">
+                </div>
+
+                <div class="option-group">
+                    <label>
+                        <input type="checkbox" id="includeSubfolders" checked>
+                        하위 폴더 포함
+                    </label>
+                </div>
+
+                <div class="option-group">
+                    <label for="maxFileSizeMB">결과 파일 최대 크기 (MB)</label>
+                    <p class="option-desc">이 크기를 초과하면 여러 파일로 분할됩니다.</p>
+                    <input type="number" id="maxFileSizeMB" value="10" min="1" max="100"
+                           style="width: 100px; padding: 8px; border: 1px solid #e3e5e8; border-radius: 8px;">
+                </div>
+
+                <div class="option-group">
+                    <label>파일 확장자 필터 <small style="font-weight:normal; color:#80848e;">(선택하지 않으면 모든 텍스트 파일 대상)</small></label>
+                    <div style="margin-bottom: 8px;">
+                        <button onclick="toggleAllExtensions(true)" class="btn btn-sm" style="font-size:12px; padding:4px 8px;">전체 선택</button>
+                        <button onclick="toggleAllExtensions(false)" class="btn btn-sm" style="font-size:12px; padding:4px 8px;">전체 해제</button>
+                    </div>
+                    <div class="ext-filter-grid">
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".txt"> .txt</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".csv"> .csv</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".log"> .log</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".md"> .md</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".json"> .json</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".xml"> .xml</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".html"> .html</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".yaml"> .yaml</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".py"> .py</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".js"> .js</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".java"> .java</label>
+                        <label class="ext-filter-item"><input type="checkbox" class="ext-checkbox" value=".sh"> .sh</label>
+                    </div>
+                    <div style="margin-top: 8px;">
+                        <label for="customExtensions" style="font-weight: normal; font-size: 13px;">추가 확장자 (쉼표 구분):</label>
+                        <input type="text" id="customExtensions" class="form-control"
+                               placeholder=".conf, .ini, .cfg"
+                               style="width: 100%; padding: 8px; border: 1px solid #e3e5e8; border-radius: 8px; font-size: 13px; margin-top: 4px;">
+                    </div>
+                </div>
+
+                <button onclick="startConsolidation()" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px;">
+                    <i class="fas fa-play"></i> 문서 통합 시작
+                </button>
+            </div>
+
+            <!-- 진행 상황 -->
+            <div id="progressSection" class="card" style="display: none;">
+                <h2><i class="fas fa-spinner fa-spin"></i> 통합 진행 중</h2>
+
+                <!-- 단계 표시 -->
+                <ul class="phase-steps">
+                    <li id="phase-scanning" class="phase-step">
+                        <div class="step-icon"><i class="fas fa-search"></i></div>
+                        <span class="step-label">파일 탐색</span>
+                    </li>
+                    <li id="phase-downloading" class="phase-step">
+                        <div class="step-icon"><i class="fas fa-download"></i></div>
+                        <span class="step-label">다운로드</span>
+                    </li>
+                    <li id="phase-deduplicating" class="phase-step">
+                        <div class="step-icon"><i class="fas fa-filter"></i></div>
+                        <span class="step-label">중복 제거</span>
+                    </li>
+                    <li id="phase-merging" class="phase-step">
+                        <div class="step-icon"><i class="fas fa-file-code"></i></div>
+                        <span class="step-label">Markdown 생성</span>
+                    </li>
+                    <li id="phase-uploading" class="phase-step">
+                        <div class="step-icon"><i class="fas fa-upload"></i></div>
+                        <span class="step-label">업로드</span>
+                    </li>
+                    <li id="phase-completed" class="phase-step">
+                        <div class="step-icon"><i class="fas fa-check"></i></div>
+                        <span class="step-label">완료</span>
+                    </li>
+                </ul>
+
+                <!-- 프로그레스 바 -->
+                <div class="progress-bar-container">
+                    <div id="progressBar" class="progress-bar-fill" style="width: 0%"></div>
+                    <span id="progressPercent" class="progress-bar-text">0%</span>
+                </div>
+
+                <p id="progressMessage" class="progress-message">준비 중...</p>
+
+                <!-- 통계 -->
+                <div class="progress-stats">
+                    <div class="progress-stat-item">
+                        <div class="stat-value" id="totalFiles">0</div>
+                        <div class="stat-label">전체 파일</div>
+                    </div>
+                    <div class="progress-stat-item">
+                        <div class="stat-value" id="textFilesFound">0</div>
+                        <div class="stat-label">텍스트 파일</div>
+                    </div>
+                    <div class="progress-stat-item">
+                        <div class="stat-value" id="downloadedFiles">0</div>
+                        <div class="stat-label">다운로드됨</div>
+                    </div>
+                    <div class="progress-stat-item">
+                        <div class="stat-value" id="duplicatesFound">0</div>
+                        <div class="stat-label">중복 발견</div>
+                    </div>
+                    <div class="progress-stat-item">
+                        <div class="stat-value" id="totalInputSize">0 B</div>
+                        <div class="stat-label">입력 크기</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button onclick="cancelConsolidation()" class="btn-cancel">
+                        <i class="fas fa-stop"></i> 취소
+                    </button>
+                </div>
+            </div>
+
+            <!-- 결과 -->
+            <div id="resultSection" class="card" style="display: none;">
+                <h2><i class="fas fa-check-circle" style="color: #3ba55d;"></i> 통합 완료</h2>
+
+                <div id="resultSummary" class="result-stats"></div>
+
+                <h3><i class="fas fa-file-download"></i> 생성된 파일</h3>
+                <div id="outputFileList"></div>
+
+                <div style="text-align: center; margin-top: 24px;">
+                    <button onclick="startNewConsolidation()" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> 새 통합 작업
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/folder-resolve.js"></script>
+    <script src="js/consolidate.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('folderInput');
+        if (el) attachFolderResolver(el);
+    });
+    </script>
+</body>
+</html>

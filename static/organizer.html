@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 파일 정리 - Google Drive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/admin-page.css">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f5f7; color: #2b2d31; }
+
+        /* page-header styles are in admin-page.css */
+
+        .main-layout { display: flex; height: calc(100vh - 100px); }
+
+        /* 좌측 패널 */
+        .left-panel { width: 380px; min-width: 380px; background: white; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow-y: auto; }
+        .panel-section { padding: 16px; border-bottom: 1px solid #eee; }
+        .panel-section h3 { font-size: 14px; color: #555; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+
+        .ruleset-list { list-style: none; }
+        .ruleset-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; border: 1px solid #eee; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .ruleset-item:hover { border-color: #5865f2; background: #f4f5f7; }
+        .ruleset-item.active { border-color: #5865f2; background: #edf0f5; }
+        .ruleset-item .name { font-weight: 500; font-size: 14px; }
+        .ruleset-item .meta { font-size: 11px; color: #999; }
+        .ruleset-item .badge { background: #3ba55d; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; }
+
+        .rule-item { padding: 8px 12px; background: #f4f5f7; border-radius: 6px; margin-bottom: 4px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        .rule-item .rule-name { font-weight: 500; }
+        .rule-item .rule-action { font-size: 11px; color: #80848e; }
+        .rule-item .rule-btns { display: flex; gap: 4px; }
+        .rule-item .rule-btns button { background: none; border: none; cursor: pointer; color: #999; font-size: 12px; padding: 2px 4px; }
+        .rule-item .rule-btns button:hover { color: #5865f2; }
+
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: #5865f2; color: white; }
+        .btn-primary:hover { background: #4752c4; }
+        .btn-success { background: #3ba55d; color: white; }
+        .btn-success:hover { background: #2d8b4a; }
+        .btn-danger { background: #ed4245; color: white; }
+        .btn-danger:hover { background: #d43438; }
+        .btn-outline { background: white; color: #5865f2; border: 1px solid #5865f2; }
+        .btn-outline:hover { background: #edf0f5; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-block { width: 100%; justify-content: center; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        /* 우측 패널 */
+        .right-panel { flex: 1; display: flex; flex-direction: column; background: #fafbfc; }
+
+        .tabs { display: flex; background: white; border-bottom: 1px solid #e0e0e0; }
+        .tab { padding: 12px 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: #80848e; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab:hover { color: #5865f2; }
+        .tab.active { color: #5865f2; border-bottom-color: #5865f2; }
+
+        .tab-content { flex: 1; display: none; overflow-y: auto; }
+        .tab-content.active { display: flex; flex-direction: column; }
+
+        /* 채팅 영역 */
+        .chat-container { flex: 1; display: flex; flex-direction: column; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 16px; }
+        .chat-message { margin-bottom: 12px; max-width: 85%; }
+        .chat-message.user { margin-left: auto; }
+        .chat-message .bubble { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+        .chat-message.user .bubble { background: #5865f2; color: white; border-bottom-right-radius: 4px; }
+        .chat-message.assistant .bubble { background: white; border: 1px solid #e0e0e0; border-bottom-left-radius: 4px; }
+        .chat-message .time { font-size: 11px; color: #999; margin-top: 4px; text-align: right; }
+        .chat-message.assistant .time { text-align: left; }
+
+        .suggestion-card { background: #f4f5f7; border: 1px solid #e3e5e8; border-radius: 8px; padding: 12px; margin-top: 8px; }
+        .suggestion-card h4 { font-size: 13px; color: #5865f2; margin-bottom: 6px; }
+        .suggestion-card p { font-size: 12px; color: #555; margin-bottom: 8px; }
+        .suggestion-card .conditions { font-size: 11px; color: #777; background: white; padding: 6px 8px; border-radius: 4px; margin-bottom: 8px; }
+
+        .chat-input-area { padding: 12px 16px; background: white; border-top: 1px solid #e0e0e0; display: flex; gap: 8px; }
+        .chat-input-area input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+        .chat-input-area input:focus { border-color: #5865f2; }
+
+        /* 미리보기/진행/로그 영역 */
+        .content-area { padding: 16px; }
+
+        .preview-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .preview-table th { background: #f4f5f7; padding: 8px 12px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: 600; }
+        .preview-table td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+        .preview-table tr:hover { background: #f4f5f7; }
+
+        .progress-bar-container { background: #e9ecef; border-radius: 8px; overflow: hidden; height: 24px; margin: 12px 0; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #5865f2, #4752c4); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 500; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: white; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #eee; }
+        .stat-card .value { font-size: 24px; font-weight: 700; color: #5865f2; }
+        .stat-card .label { font-size: 12px; color: #999; margin-top: 4px; }
+
+        .log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .log-table th { background: #f4f5f7; padding: 6px 10px; text-align: left; border-bottom: 2px solid #dee2e6; }
+        .log-table td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+        .log-table .action-moved { color: #3ba55d; }
+        .log-table .action-copied { color: #17a2b8; }
+        .log-table .action-failed { color: #ed4245; }
+        .log-table .action-skipped { color: #6c757d; }
+
+        /* 모달 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; border-radius: 12px; padding: 24px; min-width: 400px; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .modal h3 { margin-bottom: 16px; }
+        .modal .form-group { margin-bottom: 12px; }
+        .modal .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+        .modal .form-group input, .modal .form-group textarea, .modal .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .modal .form-group textarea { resize: vertical; min-height: 60px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .empty-state i { font-size: 48px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        .notification { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; font-size: 14px; z-index: 2000; animation: slideIn 0.3s; }
+        .notification.success { background: #3ba55d; }
+        .notification.error { background: #ed4245; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title"><i class="fas fa-magic"></i> 스마트 파일 정리</div>
+        <div class="header-nav">
+            <a href="index.html"><i class="fas fa-home"></i> 대시보드</a>
+            <a href="compare.html">폴더 비교</a>
+            <a href="folder-analysis.html">폴더 분석</a>
+        </div>
+    </div>
+
+    <div class="help-panel">
+        <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+            <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="help-panel-body">
+            <p><strong>스마트 파일 정리</strong>는 AI를 활용하여 Google Drive 파일을 분석하고 정리 방안을 제안하는 도구입니다.</p>
+            <p><strong>사용 방법:</strong></p>
+            <ul>
+                <li>왼쪽 패널에서 정리 규칙을 설정하거나 기본 규칙을 사용합니다.</li>
+                <li>오른쪽 채팅 영역에서 AI와 대화하며 파일 정리 제안을 받습니다.</li>
+                <li>AI가 제안한 작업을 검토하고 실행할 수 있습니다.</li>
+            </ul>
+            <p><strong>참고:</strong> AI API 키 설정이 필요합니다. 설정에서 API 키를 등록하세요.</p>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <!-- 좌측 패널 -->
+        <div class="left-panel">
+            <div class="panel-section">
+                <h3><i class="fas fa-layer-group"></i> 규칙 세트</h3>
+                <ul class="ruleset-list" id="rulesetList">
+                    <li class="empty-state" id="rulesetEmpty">
+                        <p>규칙 세트가 없습니다</p>
+                    </li>
+                </ul>
+                <button class="btn btn-primary btn-block btn-sm" onclick="showCreateRuleSetModal()" style="margin-top: 8px;">
+                    <i class="fas fa-plus"></i> 새 규칙 세트
+                </button>
+            </div>
+
+            <div class="panel-section" id="rulesSection" style="display: none;">
+                <h3><i class="fas fa-list-check"></i> 규칙 목록 <span id="rulesCount" style="font-size:11px;color:#999;"></span></h3>
+                <div id="rulesList"></div>
+                <button class="btn btn-outline btn-block btn-sm" onclick="showCreateRuleModal()" style="margin-top: 8px;">
+                    <i class="fas fa-plus"></i> 규칙 추가
+                </button>
+            </div>
+
+            <div class="panel-section">
+                <h3><i class="fas fa-cogs"></i> 작업</h3>
+                <div class="btn-group">
+                    <button class="btn btn-outline btn-sm" onclick="doPreview()" id="btnPreview" disabled>
+                        <i class="fas fa-eye"></i> 미리보기
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="doExecute()" id="btnExecute" disabled>
+                        <i class="fas fa-play"></i> 실행
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleWatch()" id="btnWatch" disabled>
+                        <i class="fas fa-eye"></i> 감시 시작
+                    </button>
+                </div>
+                <div style="margin-top: 8px;">
+                    <label style="font-size: 12px; color: #80848e;">대상 폴더 ID:</label>
+                    <input type="text" id="targetFolderId" placeholder="폴더 ID 또는 URL 입력" style="width:100%; padding:6px 10px; border:1px solid #ddd; border-radius:6px; font-size:13px; margin-top:4px;">
+                </div>
+            </div>
+
+            <!-- API 키 설정 버튼 -->
+            <div style="padding: 12px 16px; border-top: 1px solid #eee; margin-top: auto;">
+                <button class="btn btn-outline btn-block btn-sm" onclick="showAPIKeySettings()" style="position: relative;">
+                    <i class="fas fa-key"></i> API 키 설정
+                    <span id="settingsBadge" style="display:none; position:absolute; top:-6px; right:-6px; background:#3ba55d; color:white; font-size:10px; width:18px; height:18px; border-radius:50%; align-items:center; justify-content:center; font-weight:700;"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 우측 패널 -->
+        <div class="right-panel">
+            <div class="tabs">
+                <div class="tab active" data-tab="chat" onclick="switchTab('chat')"><i class="fas fa-comments"></i> AI 채팅</div>
+                <div class="tab" data-tab="preview" onclick="switchTab('preview')"><i class="fas fa-eye"></i> 미리보기</div>
+                <div class="tab" data-tab="progress" onclick="switchTab('progress')"><i class="fas fa-tasks"></i> 진행 상황</div>
+                <div class="tab" data-tab="logs" onclick="switchTab('logs')"><i class="fas fa-history"></i> 로그</div>
+            </div>
+
+            <!-- 채팅 탭 -->
+            <div class="tab-content active" id="tab-chat">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message assistant">
+                            <div class="bubble">
+                                안녕하세요! Google Drive 파일 정리를 도와드리겠습니다.<br><br>
+                                예를 들어 이렇게 말씀해 주세요:<br>
+                                - "사진 파일은 Photos 폴더로 옮겨줘"<br>
+                                - "PDF 문서를 Documents 폴더로 정리해줘"<br>
+                                - "100MB 이상 파일은 LargeFiles 폴더로 이동해줘"
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." onkeypress="if(event.key==='Enter')sendChat()">
+                        <button class="btn btn-primary" onclick="sendChat()" id="btnSend">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 미리보기 탭 -->
+            <div class="tab-content" id="tab-preview">
+                <div class="content-area">
+                    <div class="empty-state" id="previewEmpty">
+                        <i class="fas fa-search"></i>
+                        <p>"미리보기" 버튼을 클릭하여 규칙 적용 결과를 확인하세요</p>
+                    </div>
+                    <div id="previewResult" style="display:none;">
+                        <div class="stats-grid" id="previewStats"></div>
+                        <table class="preview-table">
+                            <thead>
+                                <tr><th>파일명</th><th>크기</th><th>규칙</th><th>작업</th><th>대상</th></tr>
+                            </thead>
+                            <tbody id="previewTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 진행 상황 탭 -->
+            <div class="tab-content" id="tab-progress">
+                <div class="content-area">
+                    <div class="empty-state" id="progressEmpty">
+                        <i class="fas fa-hourglass-half"></i>
+                        <p>진행 중인 작업이 없습니다</p>
+                    </div>
+                    <div id="progressResult" style="display:none;">
+                        <div class="stats-grid" id="progressStats"></div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="progressBar" style="width:0%">0%</div>
+                        </div>
+                        <div style="text-align: center; margin-top: 8px;">
+                            <button class="btn btn-danger btn-sm" onclick="cancelOrganize()" id="btnCancel">
+                                <i class="fas fa-stop"></i> 취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 로그 탭 -->
+            <div class="tab-content" id="tab-logs">
+                <div class="content-area">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span style="font-size:14px; font-weight:600;">정리 기록</span>
+                        <button class="btn btn-outline btn-sm" onclick="exportLogs()">
+                            <i class="fas fa-file-export"></i> 스프레드시트 내보내기
+                        </button>
+                    </div>
+                    <div id="logsEmpty" class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <p>아직 정리 기록이 없습니다</p>
+                    </div>
+                    <table class="log-table" id="logsTable" style="display:none;">
+                        <thead>
+                            <tr><th>일시</th><th>규칙</th><th>파일</th><th>크기</th><th>결과</th></tr>
+                        </thead>
+                        <tbody id="logsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 규칙 세트 생성 모달 -->
+    <div class="modal-overlay" id="createRuleSetModal">
+        <div class="modal">
+            <h3><i class="fas fa-plus-circle"></i> 새 규칙 세트</h3>
+            <div class="form-group">
+                <label>이름 *</label>
+                <input type="text" id="rsName" placeholder="예: 사진 정리 규칙">
+            </div>
+            <div class="form-group">
+                <label>설명</label>
+                <textarea id="rsDescription" placeholder="이 규칙 세트에 대한 설명"></textarea>
+            </div>
+            <div class="form-group">
+                <label>감시 폴더 ID (선택)</label>
+                <input type="text" id="rsWatchFolder" placeholder="자동 정리할 폴더 ID">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal('createRuleSetModal')">취소</button>
+                <button class="btn btn-primary" onclick="createRuleSet()">생성</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 규칙 생성 모달 -->
+    <div class="modal-overlay" id="createRuleModal">
+        <div class="modal">
+            <h3><i class="fas fa-plus-circle"></i> 새 규칙</h3>
+            <div class="form-group">
+                <label>규칙 이름 *</label>
+                <input type="text" id="ruleName" placeholder="예: 이미지 파일 정리">
+            </div>
+            <div class="form-group">
+                <label>설명</label>
+                <input type="text" id="ruleDesc" placeholder="규칙 설명">
+            </div>
+            <div class="form-group">
+                <label>조건 필드</label>
+                <select id="ruleCondField">
+                    <option value="extension">확장자</option>
+                    <option value="name">파일 이름</option>
+                    <option value="mimeType">MIME 타입</option>
+                    <option value="size">파일 크기 (바이트)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>연산자</label>
+                <select id="ruleCondOp">
+                    <option value="equals">같음</option>
+                    <option value="contains">포함</option>
+                    <option value="startsWith">시작</option>
+                    <option value="endsWith">끝남</option>
+                    <option value="matches">정규식</option>
+                    <option value="greaterThan">초과</option>
+                    <option value="lessThan">미만</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>값</label>
+                <input type="text" id="ruleCondValue" placeholder="예: .jpg">
+            </div>
+            <div class="form-group">
+                <label>작업</label>
+                <select id="ruleAction">
+                    <option value="move">이동</option>
+                    <option value="copy">복사</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>대상 폴더 ID *</label>
+                <input type="text" id="ruleTarget" placeholder="Google Drive 폴더 ID">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal('createRuleModal')">취소</button>
+                <button class="btn btn-primary" onclick="createRule()">추가</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 키 설정 모달 -->
+    <div class="modal-overlay" id="apiKeySettingsModal">
+        <div class="modal" style="min-width: 480px;">
+            <h3><i class="fas fa-key"></i> AI API 키 설정</h3>
+            <p style="font-size: 12px; color: #999; margin-bottom: 16px;">
+                API 키는 브라우저에만 저장되며 서버에 저장되지 않습니다. 화살표로 우선순위를 조정하세요.
+            </p>
+
+            <div id="providerList"></div>
+
+            <div class="modal-actions" style="justify-content: space-between;">
+                <button class="btn btn-danger btn-sm" onclick="clearAPIKeySettings()">
+                    <i class="fas fa-trash"></i> 전체 삭제
+                </button>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-outline" onclick="closeModal('apiKeySettingsModal')">취소</button>
+                    <button class="btn btn-primary" onclick="saveAPIKeySettings()">
+                        <i class="fas fa-save"></i> 저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/folder-resolve.js"></script>
+    <script src="js/organizer.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('targetFolderId');
+        if (el) attachFolderResolver(el);
+    });
+    </script>
+</body>
+</html>

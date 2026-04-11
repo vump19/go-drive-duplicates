@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive 중복 파일 검사기</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Google Drive 중복 파일 검사기</h1>
+            <p class="subtitle">Clean Architecture v1.0.0</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="tab-button active" onclick="showTab('dashboard')">대시보드</button>
+            <button class="tab-button" onclick="showTab('scan')">파일 스캔</button>
+            <button class="tab-button" onclick="showTab('duplicates')">중복 파일</button>
+            <button class="tab-button" onclick="showTab('cleanup')">파일 정리</button>
+            <button class="tab-button" onclick="showTab('settings')">설정</button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                <!-- System Status -->
+                <div class="card">
+                    <h3>시스템 상태</h3>
+                    <div class="status-indicators">
+                        <div class="status-item">
+                            <span class="status-label">서버:</span>
+                            <span id="server-status" class="status-value">확인 중...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">데이터베이스:</span>
+                            <span id="db-status" class="status-value">확인 중...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Google Drive:</span>
+                            <span id="storage-status" class="status-value">확인 중...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="card">
+                    <h3>통계</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number" id="total-files">-</div>
+                            <div class="stat-label">전체 파일</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="duplicate-groups">-</div>
+                            <div class="stat-label">중복 그룹</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="wasted-space">-</div>
+                            <div class="stat-label">낭비된 공간</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Operations -->
+                <div class="card">
+                    <h3>최근 작업</h3>
+                    <div id="recent-operations">
+                        <p class="loading">작업 내역을 불러오는 중...</p>
+                    </div>
+                </div>
+
+                <!-- Progress Chart -->
+                <div class="card">
+                    <h3>작업 진행률</h3>
+                    <canvas id="progress-chart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Scan Tab -->
+        <div id="scan" class="tab-content">
+            <div class="scan-container">
+                <div class="card">
+                    <h3>파일 스캔</h3>
+                    <div class="scan-controls">
+                        <button id="start-scan-btn" class="btn btn-primary" onclick="startFileScan()">
+                            전체 스캔 시작
+                        </button>
+                        <button id="calculate-hashes-btn" class="btn btn-secondary" onclick="calculateHashes()">
+                            해시 계산
+                        </button>
+                        <button class="btn btn-info" onclick="refreshScanProgress()">
+                            진행 상황 새로고침
+                        </button>
+                    </div>
+                    
+                    <div class="progress-section">
+                        <h4>스캔 진행 상황</h4>
+                        <div id="scan-progress" class="progress-container">
+                            <p>스캔 정보를 불러오는 중...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>폴더별 스캔</h3>
+                    <div class="folder-scan-controls">
+                        <input type="text" id="folder-id-input" placeholder="폴더 ID 입력" class="input">
+                        <button class="btn btn-primary" onclick="scanFolder()">폴더 스캔</button>
+                    </div>
+                    <p class="help-text">특정 폴더만 스캔하려면 Google Drive 폴더 ID를 입력하세요.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Duplicates Tab -->
+        <div id="duplicates" class="tab-content">
+            <div class="duplicates-container">
+                <div class="card">
+                    <h3>중복 파일 검색</h3>
+                    <div class="duplicate-controls">
+                        <button class="btn btn-primary" onclick="findDuplicates()">
+                            중복 파일 검색
+                        </button>
+                        <button class="btn btn-info" onclick="refreshDuplicates()">
+                            목록 새로고침
+                        </button>
+                        <button class="btn btn-secondary" onclick="getDuplicateProgress()">
+                            진행 상황 확인
+                        </button>
+                    </div>
+                    
+                    <div class="pagination-controls">
+                        <button class="btn" onclick="prevPage()" id="prev-btn" disabled>이전</button>
+                        <span id="page-info">페이지 1 / 1</span>
+                        <button class="btn" onclick="nextPage()" id="next-btn" disabled>다음</button>
+                        <select id="page-size" onchange="changePageSize()">
+                            <option value="10">10개씩</option>
+                            <option value="20" selected>20개씩</option>
+                            <option value="50">50개씩</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>중복 그룹 목록</h3>
+                    <div id="duplicate-groups-container">
+                        <p class="loading">중복 그룹을 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cleanup Tab -->
+        <div id="cleanup" class="tab-content">
+            <div class="cleanup-container">
+                <div class="card">
+                    <h3>파일 정리 도구</h3>
+                    <div class="cleanup-tools">
+                        <div class="tool-section">
+                            <h4>특정 파일 삭제</h4>
+                            <textarea id="file-ids-input" placeholder="파일 ID들을 줄바꿈으로 구분하여 입력" class="input" rows="3"></textarea>
+                            <button class="btn btn-danger" onclick="deleteSpecificFiles()">선택된 파일 삭제</button>
+                        </div>
+
+                        <div class="tool-section">
+                            <h4>패턴 기반 일괄 삭제</h4>
+                            <input type="text" id="pattern-input" placeholder="정규식 패턴 (예: .*\\.tmp$)" class="input">
+                            <button class="btn btn-warning" onclick="searchByPattern()">검색</button>
+                            <button class="btn btn-danger" onclick="deleteByPattern()">패턴 매칭 파일 삭제</button>
+                            <div id="pattern-results" class="pattern-results"></div>
+                        </div>
+
+                        <div class="tool-section">
+                            <h4>빈 폴더 정리</h4>
+                            <button class="btn btn-warning" onclick="cleanupEmptyFolders()">빈 폴더 정리</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>정리 진행 상황</h3>
+                    <div id="cleanup-progress">
+                        <p>정리 작업 정보가 없습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="settings-container">
+                <div class="card">
+                    <h3>스캔 설정</h3>
+                    <div class="setting-group">
+                        <label for="worker-count">작업자 수:</label>
+                        <input type="number" id="worker-count" value="4" min="1" max="10" class="input">
+                    </div>
+                    <div class="setting-group">
+                        <label for="batch-size">배치 크기:</label>
+                        <input type="number" id="batch-size" value="100" min="10" max="1000" class="input">
+                    </div>
+                    <button class="btn btn-primary" onclick="applySettings()">설정 적용</button>
+                </div>
+
+                <div class="card">
+                    <h3>API 정보</h3>
+                    <div class="api-info">
+                        <p><strong>서버 주소:</strong> <span id="api-base-url">http://localhost:8080</span></p>
+                        <p><strong>API 버전:</strong> v1.0.0</p>
+                        <p><strong>아키텍처:</strong> Clean Architecture</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Area -->
+    <div id="notification" class="notification hidden">
+        <span id="notification-message"></span>
+        <button onclick="hideNotification()">&times;</button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loading-message">처리 중...</p>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

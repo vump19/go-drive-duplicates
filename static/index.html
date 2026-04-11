@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive 관리 대시보드</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f5f7; overflow: hidden; height: 100vh; }
+
+        /* ── Layout ── */
+        .admin-layout { display: flex; height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 240px;
+            background: linear-gradient(180deg, #2b2d31 0%, #1e1f22 100%);
+            color: #b5bac1;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .sidebar-brand {
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-brand i { font-size: 1.3rem; color: #7c8aff; }
+        .sidebar-brand span { font-weight: 700; font-size: 0.95rem; color: #e0e1e5; letter-spacing: -0.3px; }
+
+        .sidebar-section { padding: 16px 12px 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.2px; color: #6d6f78; font-weight: 600; }
+
+        .sidebar-menu { list-style: none; padding: 0 8px; }
+        .sidebar-menu li { margin-bottom: 2px; }
+        .sidebar-menu a, .sidebar-menu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 6px;
+            color: #b5bac1;
+            text-decoration: none;
+            font-size: 0.88rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+        }
+        .sidebar-menu a:hover, .sidebar-menu button:hover { background: rgba(255,255,255,0.06); color: #e0e1e5; }
+        .sidebar-menu a.active, .sidebar-menu button.active { background: rgba(124,138,255,0.15); color: #9ba2ff; }
+        .sidebar-menu i { width: 18px; text-align: center; font-size: 0.85rem; opacity: 0.75; }
+        .sidebar-menu .badge {
+            margin-left: auto;
+            background: #5865f2;
+            color: white;
+            font-size: 0.7rem;
+            padding: 1px 6px;
+            border-radius: 9px;
+            font-weight: 600;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            height: 52px;
+            background: #ffffff;
+            border-bottom: 1px solid #e3e5e8;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .topbar-title { font-size: 1rem; font-weight: 600; color: #2b2d31; }
+        .topbar-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.82rem;
+            color: #6d6f78;
+        }
+        .topbar-status .status-dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px;
+        }
+        .topbar-status .status-dot.ok { background: #3ba55d; }
+        .topbar-status .status-dot.err { background: #ed4245; }
+
+        /* ── Main content ── */
+        .main-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .main-content { flex: 1; overflow-y: auto; padding: 24px; }
+
+        /* ── Dashboard page ── */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+
+        /* ── Stat cards ── */
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e3e5e8;
+        }
+        .stat-card .stat-label { font-size: 0.78rem; color: #80848e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .stat-card .stat-value { font-size: 1.5rem; font-weight: 700; color: #2b2d31; }
+        .stat-card .stat-sub { font-size: 0.8rem; color: #80848e; margin-top: 4px; }
+
+        /* ── Content card ── */
+        .content-card {
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #e3e5e8;
+            margin-bottom: 20px;
+        }
+        .content-card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e3e5e8;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #2b2d31;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .content-card-body { padding: 20px; }
+
+        /* ── Action buttons in content ── */
+        .action-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .action-grid .act-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #d5d7db;
+            background: #fff;
+            color: #2b2d31;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .action-grid .act-btn:hover { background: #f4f5f7; border-color: #b5b8bf; }
+        .action-grid .act-btn.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
+        .action-grid .act-btn.primary:hover { background: #4752c4; }
+        .action-grid .act-btn.danger { background: #ed4245; color: #fff; border-color: #ed4245; }
+        .action-grid .act-btn.danger:hover { background: #d63a3d; }
+        .action-grid .act-btn.success { background: #3ba55d; color: #fff; border-color: #3ba55d; }
+        .action-grid .act-btn.success:hover { background: #2d8049; }
+
+        /* ── Telegram form ── */
+        .tg-form input[type="text"], .tg-form input[type="password"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d5d7db;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+        .tg-form label { font-size: 0.85rem; font-weight: 500; color: #4e5058; }
+        .tg-form .hint { font-size: 0.78rem; color: #80848e; margin-top: -8px; margin-bottom: 12px; }
+
+        /* ── iframe page ── */
+        .page-section iframe {
+            width: 100%;
+            height: calc(100vh - 52px);
+            border: none;
+        }
+
+        /* ── Scrollbar ── */
+        .sidebar::-webkit-scrollbar, .main-content::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        .main-content::-webkit-scrollbar-thumb { background: #d5d7db; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fas fa-hard-drive"></i>
+                <span>Drive Manager</span>
+            </div>
+
+            <div class="sidebar-section">대시보드</div>
+            <ul class="sidebar-menu">
+                <li><button class="active" onclick="showPage('dashboard', this)"><i class="fas fa-chart-pie"></i> 대시보드</button></li>
+            </ul>
+
+            <div class="sidebar-section">스캔 및 검색</div>
+            <ul class="sidebar-menu">
+                <li><button onclick="showPage('dashboard', this); startFileScan();"><i class="fas fa-cloud-download-alt"></i> 파일 스캔</button></li>
+                <li><button onclick="showPage('dashboard', this); startScan();"><i class="fas fa-search-plus"></i> 중복 검사</button></li>
+            </ul>
+
+            <div class="sidebar-section">폴더 도구</div>
+            <ul class="sidebar-menu">
+                <li><button onclick="showPage('compare', this)"><i class="fas fa-folder-open"></i> 폴더 비교</button></li>
+                <li><button onclick="showPage('single-folder', this)"><i class="fas fa-folder"></i> 폴더 내 중복</button></li>
+                <li><button onclick="showPage('folder-analysis', this)"><i class="fas fa-sitemap"></i> 폴더 분석</button></li>
+                <li><button onclick="showPage('explorer', this)"><i class="fas fa-columns"></i> 파일 탐색기</button></li>
+            </ul>
+
+            <div class="sidebar-section">파일 관리</div>
+            <ul class="sidebar-menu">
+                <li><button onclick="showPage('folder-download', this)"><i class="fas fa-download"></i> 폴더 다운로드</button></li>
+                <li><button onclick="showPage('batch-archive', this)"><i class="fas fa-archive"></i> 일괄 아카이브</button></li>
+                <li><button onclick="showPage('organizer', this)"><i class="fas fa-magic"></i> 스마트 정리</button></li>
+                <li><button onclick="showPage('consolidate', this)"><i class="fas fa-file-alt"></i> 문서 통합</button></li>
+            </ul>
+
+            <div class="sidebar-section">기타</div>
+            <ul class="sidebar-menu">
+                <li><button onclick="showPage('sharing', this)"><i class="fas fa-share-alt"></i> 공유 관리</button></li>
+                <li><button onclick="showPage('audio-convert', this)"><i class="fas fa-music"></i> 오디오 변환</button></li>
+                <li><button onclick="showPage('settings', this)"><i class="fas fa-cog"></i> 설정</button></li>
+            </ul>
+        </nav>
+
+        <!-- Main area -->
+        <div class="main-wrap">
+            <!-- Top bar -->
+            <div class="topbar">
+                <div class="topbar-title" id="topbar-title">대시보드</div>
+                <div class="topbar-status">
+                    <span><span class="status-dot ok" id="topbar-dot"></span> <span id="topbar-conn">연결 확인 중...</span></span>
+                    <span id="topbar-files"></span>
+                </div>
+            </div>
+
+            <!-- Pages -->
+            <div class="main-content">
+
+                <!-- ===== Dashboard ===== -->
+                <div id="page-dashboard" class="page-section active">
+                    <div class="stat-row">
+                        <div class="stat-card">
+                            <div class="stat-label">시스템 상태</div>
+                            <div class="stat-value" id="system-status">확인 중...</div>
+                            <div class="stat-sub" id="system-subtitle">Google Drive 연결</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">전체 파일</div>
+                            <div class="stat-value" id="total-files">-</div>
+                            <div class="stat-sub" id="total-size">총 크기: -</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">해시 계산</div>
+                            <div class="stat-value" id="hashed-files">-</div>
+                            <div class="stat-sub" id="hashed-percentage">해시 계산: -%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">중복 그룹</div>
+                            <div class="stat-value" id="duplicate-groups">-</div>
+                            <div class="stat-sub" id="duplicate-files">중복 파일: -개</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">절약 가능</div>
+                            <div class="stat-value" id="potential-savings">-</div>
+                            <div class="stat-sub">절약 가능 용량</div>
+                        </div>
+                    </div>
+
+                    <!-- 진행 상황 -->
+                    <div class="content-card">
+                        <div class="content-card-header"><i class="fas fa-chart-line"></i> 진행 상황</div>
+                        <div class="content-card-body">
+                            <div id="progress-container">
+                                <div style="text-align: center; padding: 24px; color: #80848e;">
+                                    <i class="fas fa-check-circle" style="font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                                    진행 중인 작업이 없습니다
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 최근 중복 파일 -->
+                    <div class="content-card">
+                        <div class="content-card-header"><i class="fas fa-history"></i> 최근 발견된 중복 파일</div>
+                        <div class="content-card-body">
+                            <div id="recent-duplicates">
+                                <div style="text-align: center; padding: 24px; color: #80848e;">
+                                    <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
+                                    로딩 중...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 중복 그룹 관리 -->
+                    <div class="content-card">
+                        <div class="content-card-header"><i class="fas fa-tools"></i> 중복 그룹 관리</div>
+                        <div class="content-card-body">
+                            <div class="action-grid">
+                                <button class="act-btn" onclick="validateDuplicateGroups()" title="삭제된 파일이 포함된 중복 그룹을 정리합니다">
+                                    <i class="fas fa-check-circle"></i> 중복 그룹 검증
+                                </button>
+                                <button class="act-btn success" onclick="showVerifiedDuplicatesManagement()" title="검증됨 및 무시된 중복 그룹을 관리합니다">
+                                    <i class="fas fa-clipboard-check"></i> 검증된 그룹 관리
+                                </button>
+                                <button class="act-btn danger" onclick="showBulkDuplicateManagement()">
+                                    <i class="fas fa-layer-group"></i> 중복 그룹 관리
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== Settings (Telegram) ===== -->
+                <div id="page-settings" class="page-section">
+                    <div class="content-card">
+                        <div class="content-card-header"><i class="fas fa-bell"></i> 텔레그램 알림 설정</div>
+                        <div class="content-card-body tg-form">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.92rem; font-weight: 500;">
+                                    <input type="checkbox" id="telegramEnabled" onchange="toggleTelegramSettings()" style="width: auto;">
+                                    <span>작업 완료/실패 시 텔레그램 알림 받기</span>
+                                </label>
+                                <div class="hint" style="margin-top: 4px; margin-bottom: 0;">파일 스캔, 해시 계산, 폴더 비교 등 장시간 작업의 완료/실패를 텔레그램으로 알려드립니다.</div>
+                            </div>
+                            <div id="telegramSettingsForm" style="display: none;">
+                                <label for="telegramBotToken">Bot Token:</label>
+                                <input type="password" id="telegramBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                <div class="hint">@BotFather에서 생성한 봇의 토큰</div>
+                                <label for="telegramChatId">Chat ID:</label>
+                                <input type="text" id="telegramChatId" placeholder="123456789">
+                                <div class="hint">@userinfobot에게 메시지를 보내면 Chat ID를 알 수 있습니다</div>
+                                <div class="action-grid" style="margin-top: 8px;">
+                                    <button class="act-btn primary" onclick="saveTelegramSettings()"><i class="fas fa-save"></i> 저장</button>
+                                    <button class="act-btn" onclick="testTelegramNotification()"><i class="fas fa-paper-plane"></i> 테스트 알림</button>
+                                </div>
+                            </div>
+                            <div id="telegramStatus" class="telegram-status" style="display: none; margin-top: 12px; padding: 10px 15px; border-radius: 6px; font-size: 14px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== Iframe pages ===== -->
+                <div id="page-compare" class="page-section"></div>
+                <div id="page-single-folder" class="page-section"></div>
+                <div id="page-folder-analysis" class="page-section"></div>
+                <div id="page-explorer" class="page-section"></div>
+                <div id="page-folder-download" class="page-section"></div>
+                <div id="page-batch-archive" class="page-section"></div>
+                <div id="page-organizer" class="page-section"></div>
+                <div id="page-sharing" class="page-section"></div>
+                <div id="page-audio-convert" class="page-section"></div>
+                <div id="page-consolidate" class="page-section"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Modals (kept from original) ===== -->
+
+    <!-- Bulk Duplicate Management Modal -->
+    <div id="bulk-duplicate-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeBulkDuplicateModal()"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-layer-group"></i> 중복 그룹 대량 관리</h2>
+                <button class="modal-close" onclick="closeBulkDuplicateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="bulk-actions-toolbar">
+                    <div class="bulk-actions-left">
+                        <button class="btn btn-secondary" onclick="selectAllGroups()"><i class="fas fa-check-square"></i> 전체 선택</button>
+                        <button class="btn btn-secondary" onclick="unselectAllGroups()"><i class="fas fa-square"></i> 전체 해제</button>
+                        <span id="selected-count">0개 선택됨</span>
+                    </div>
+                    <div class="bulk-actions-right">
+                        <button class="btn btn-danger" onclick="deleteSelectedGroups()" id="delete-selected-btn" disabled><i class="fas fa-trash"></i> 선택된 그룹 삭제</button>
+                        <button class="btn btn-warning" onclick="deleteAllGroups()"><i class="fas fa-trash-alt"></i> 모든 그룹 삭제</button>
+                    </div>
+                </div>
+                <div class="bulk-duplicate-list" id="bulk-duplicate-list">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> 중복 그룹을 불러오는 중...</div>
+                </div>
+                <div class="bulk-pagination" id="bulk-pagination"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBulkDuplicateModal()">닫기</button>
+                <button class="btn btn-primary" onclick="refreshBulkList()"><i class="fas fa-sync"></i> 새로고침</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Notification Modal -->
+    <div id="result-notification-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeResultNotificationModal()"></div>
+        <div class="modal-content notification-modal">
+            <div class="modal-header">
+                <h2 id="notification-title"><i id="notification-icon"></i> <span id="notification-title-text">알림</span></h2>
+                <button class="modal-close" onclick="closeResultNotificationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="notification-content"><div class="notification-message" id="notification-message"></div></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeResultNotificationModal()"><i class="fas fa-check"></i> 확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Details Modal -->
+    <div id="group-details-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeGroupDetailsModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-copy"></i> 중복 그룹 상세 정보</h2>
+                <button class="modal-close" onclick="closeGroupDetailsModal()">&times;</button>
+            </div>
+            <div class="modal-body"><div id="group-details-content"></div></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeGroupDetailsModal()">닫기</button>
+                <button class="btn btn-success" id="verify-group-btn" onclick="markCurrentGroupAsVerified()"><i class="fas fa-check"></i> 검증됨으로 변경</button>
+                <button class="btn btn-warning" id="ignore-group-btn" onclick="markCurrentGroupAsIgnored()"><i class="fas fa-eye-slash"></i> 무시됨</button>
+                <button class="btn btn-danger" id="delete-group-btn" onclick="deleteCurrentGroup()">그룹 삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verified Duplicates Management Modal -->
+    <div id="verified-duplicates-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeVerifiedDuplicatesModal()"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-check"></i> 검증된 중복 그룹 관리</h2>
+                <button class="modal-close" onclick="closeVerifiedDuplicatesModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="verification-tabs">
+                    <button class="tab-btn active" onclick="switchVerificationTab('verified')" id="verified-tab"><i class="fas fa-check-circle"></i> 검증됨 (<span id="verified-count">0</span>)</button>
+                    <button class="tab-btn" onclick="switchVerificationTab('ignored')" id="ignored-tab"><i class="fas fa-eye-slash"></i> 무시됨 (<span id="ignored-count">0</span>)</button>
+                </div>
+                <div id="verified-list-container" class="verification-list-container"><div class="loading"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</div></div>
+                <div id="ignored-list-container" class="verification-list-container" style="display: none;"><div class="loading"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</div></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeVerifiedDuplicatesModal()"><i class="fas fa-times"></i> 닫기</button>
+                <button class="btn btn-primary" onclick="refreshVerifiedLists()"><i class="fas fa-sync"></i> 새로고침</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirmation-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeDeleteConfirmationModal()"></div>
+        <div class="modal-content small-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle" style="color: #ed4245;"></i> 삭제 확인</h2>
+                <button class="modal-close" onclick="closeDeleteConfirmationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="delete-confirmation-content"></div>
+                <div id="delete-method-options" class="delete-method-options" style="margin-top: 16px; padding: 12px; background: #f4f5f7; border-radius: 8px; border: 1px solid #e3e5e8;">
+                    <div style="font-weight: 600; margin-bottom: 12px; color: #2b2d31;"><i class="fas fa-cog"></i> 삭제 방식 선택</div>
+                    <div class="delete-method-radio" style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 8px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#e3e5e8'" onmouseout="this.style.background='transparent'">
+                            <input type="radio" name="deleteMethod" value="trash" checked style="margin-top: 3px;">
+                            <div>
+                                <div style="font-weight: 500; color: #2b2d31;"><i class="fas fa-recycle" style="color: #3ba55d;"></i> 휴지통으로 이동</div>
+                                <div style="font-size: 12px; color: #80848e; margin-top: 2px;">파일을 휴지통으로 이동합니다. 나중에 복구할 수 있습니다.</div>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 8px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#e3e5e8'" onmouseout="this.style.background='transparent'">
+                            <input type="radio" name="deleteMethod" value="permanent" style="margin-top: 3px;">
+                            <div>
+                                <div style="font-weight: 500; color: #2b2d31;"><i class="fas fa-trash-alt" style="color: #ed4245;"></i> 완전 삭제</div>
+                                <div style="font-size: 12px; color: #80848e; margin-top: 2px;">파일을 영구적으로 삭제합니다. <strong style="color: #ed4245;">복구할 수 없습니다!</strong></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteConfirmationModal()">취소</button>
+                <button class="btn btn-danger" id="confirm-delete-btn" onclick="executeDelete()"><i class="fas fa-trash"></i> 삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 중복 검색 옵션 모달 -->
+    <div id="duplicateScanModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-search-plus"></i> 중복 파일 검사 옵션</h2>
+                <button class="modal-close" onclick="closeDuplicateScanModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="font-size: 14px; color: #80848e; line-height: 1.6; margin-bottom: 24px;">중복 파일 검사 방식을 선택하세요.</p>
+                <div style="display: grid; gap: 16px;">
+                    <div style="border: 2px solid #e3e5e8; border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.2s;" onclick="startDuplicateScanQuick()" onmouseover="this.style.borderColor='#5865f2'" onmouseout="this.style.borderColor='#e3e5e8'">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 44px; height: 44px; background: #5865f2; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-bolt" style="color: white; font-size: 18px;"></i></div>
+                            <div><h3 style="font-size: 15px; font-weight: 600; margin: 0 0 4px; color: #2b2d31;">빠른 검사 (권장)</h3><p style="font-size: 13px; color: #80848e; margin: 0;">이미 계산된 해시를 사용하여 빠르게 중복을 검색합니다.</p></div>
+                        </div>
+                    </div>
+                    <div style="border: 2px solid #e3e5e8; border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.2s;" onclick="startDuplicateScanFull()" onmouseover="this.style.borderColor='#faa61a'" onmouseout="this.style.borderColor='#e3e5e8'">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 44px; height: 44px; background: #faa61a; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-database" style="color: white; font-size: 18px;"></i></div>
+                            <div><h3 style="font-size: 15px; font-weight: 600; margin: 0 0 4px; color: #2b2d31;">전체 검사 (해시 계산 포함)</h3><p style="font-size: 13px; color: #80848e; margin: 0;">모든 파일의 해시를 계산하여 정확하게 중복을 검색합니다.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 재개/재시작 선택 모달 -->
+    <div id="resumeResetModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-history"></i> 진행 중인 작업 발견</h2>
+                <button class="modal-close" onclick="closeResumeResetModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="font-size: 14px; color: #80848e; margin-bottom: 24px;">이전에 중단된 중복 검사가 있습니다. 이어서 진행하시겠습니까?</p>
+                <div id="resumeTaskInfo" style="margin-bottom: 24px; padding: 16px; background: #f4f5f7; border-radius: 8px; font-size: 14px;">
+                    <div style="margin-bottom: 8px;"><i class="fas fa-info-circle" style="color: #5865f2; margin-right: 8px;"></i><strong>진행 상황:</strong></div>
+                    <div style="padding-left: 24px; color: #80848e; line-height: 1.8;">
+                        <div><strong>배치:</strong> <span id="resumeBatchNumber">-</span>번째</div>
+                        <div><strong>성공:</strong> <span id="resumeSuccessCount">-</span>개</div>
+                        <div><strong>실패:</strong> <span id="resumeFailCount">-</span>개</div>
+                        <div><strong>마지막 업데이트:</strong> <span id="resumeLastUpdated">-</span></div>
+                    </div>
+                </div>
+                <div style="display: grid; gap: 16px;">
+                    <div style="border: 2px solid #3ba55d; border-radius: 8px; padding: 20px; cursor: pointer; background: #f0fdf4;" onclick="resumeDuplicateScan()">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 44px; height: 44px; background: #3ba55d; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-play" style="color: white; font-size: 18px;"></i></div>
+                            <div><h3 style="font-size: 15px; font-weight: 600; margin: 0 0 4px; color: #065f46;">이어서 계속하기 (권장)</h3><p style="font-size: 13px; color: #047857; margin: 0;">중단된 지점부터 다시 시작합니다.</p></div>
+                        </div>
+                    </div>
+                    <div style="border: 2px solid #e3e5e8; border-radius: 8px; padding: 20px; cursor: pointer;" onclick="resetAndStartNewScan()">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 44px; height: 44px; background: #ed4245; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-redo" style="color: white; font-size: 18px;"></i></div>
+                            <div><h3 style="font-size: 15px; font-weight: 600; margin: 0 0 4px; color: #2b2d31;">처음부터 다시 시작</h3><p style="font-size: 13px; color: #80848e; margin: 0;">기존 진행 상황을 모두 삭제하고 새로 시작합니다.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/folder-resolve.js"></script>
+    <script src="js/delete-confirmation.js"></script>
+    <script src="js/verified-duplicates.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/duplicate-groups.js"></script>
+    <script src="js/bulk-duplicate-management.js"></script>
+    <script src="js/telegram-settings.js"></script>
+    <script>
+    const PAGE_MAP = {
+        'compare':         { title: '폴더 비교',       url: 'compare.html' },
+        'single-folder':   { title: '폴더 내 중복',     url: 'compare.html#single-folder' },
+        'folder-analysis': { title: '폴더 분석',       url: 'folder-analysis.html' },
+        'explorer':        { title: '파일 탐색기',      url: 'explorer.html' },
+        'folder-download': { title: '폴더 다운로드',    url: 'folder-download.html' },
+        'batch-archive':   { title: '일괄 아카이브',    url: 'batch-archive.html' },
+        'organizer':       { title: '스마트 정리',      url: 'organizer.html' },
+        'sharing':         { title: '공유 관리',       url: 'sharing.html' },
+        'audio-convert':   { title: '오디오 변환',      url: 'audio-convert.html' },
+        'consolidate':     { title: '문서 통합',       url: 'consolidate.html' },
+    };
+
+    function showPage(pageId, btnEl) {
+        // Hide all pages
+        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+
+        // Deactivate all menu buttons
+        document.querySelectorAll('.sidebar-menu button, .sidebar-menu a').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+
+        if (pageId === 'dashboard') {
+            document.getElementById('page-dashboard').classList.add('active');
+            document.getElementById('topbar-title').textContent = '대시보드';
+            return;
+        }
+
+        if (pageId === 'settings') {
+            document.getElementById('page-settings').classList.add('active');
+            document.getElementById('topbar-title').textContent = '설정';
+            return;
+        }
+
+        const info = PAGE_MAP[pageId];
+        if (!info) return;
+
+        const container = document.getElementById('page-' + pageId);
+        container.classList.add('active');
+        document.getElementById('topbar-title').textContent = info.title;
+
+        // Load iframe if not already loaded
+        if (!container.querySelector('iframe')) {
+            const iframe = document.createElement('iframe');
+            iframe.src = info.url;
+            container.appendChild(iframe);
+        }
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폴더 일괄 아카이브 - Google Drive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/admin-page.css">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+    <style>
+        .folder-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e3e5e8;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f4f5f7;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #e3e5e8;
+            transition: all 0.2s;
+        }
+
+        .folder-item:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+        }
+
+        .folder-item.processing {
+            border-color: #faa61a;
+            background: #fffbeb;
+        }
+
+        .folder-item.completed {
+            border-color: #3ba55d;
+            background: #ecfdf5;
+        }
+
+        .folder-item.failed {
+            border-color: #ed4245;
+            background: #fef2f2;
+        }
+
+        .folder-item-number {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .folder-item.completed .folder-item-number {
+            background: #3ba55d;
+        }
+
+        .folder-item.failed .folder-item-number {
+            background: #ed4245;
+        }
+
+        .folder-item.processing .folder-item-number {
+            background: #faa61a;
+        }
+
+        .folder-item-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        .folder-item-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .folder-item-input:disabled {
+            background: #f1f5f9;
+            color: #80848e;
+        }
+
+        .option-select {
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            background: white;
+        }
+
+        .option-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .option-input {
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            background: white;
+            margin-top: 8px;
+        }
+
+        .option-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .folder-item-delete {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #fee2e2;
+            color: #ed4245;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .folder-item-delete:hover {
+            background: #ed4245;
+            color: white;
+        }
+
+        .folder-item-delete:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .folder-item-status {
+            font-size: 0.85rem;
+            color: #80848e;
+            min-width: 120px;
+            text-align: right;
+        }
+
+        .folder-item-status.processing {
+            color: #faa61a;
+        }
+
+        .folder-item-status.completed {
+            color: #3ba55d;
+        }
+
+        .folder-item-status.failed {
+            color: #ed4245;
+        }
+
+        .add-folder-btn {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #cbd5e1;
+            background: transparent;
+            color: #80848e;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        .add-folder-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .archive-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .option-group {
+            background: #f4f5f7;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .option-group h4 {
+            margin: 0 0 12px 0;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .progress-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f4f5f7 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .progress-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2b2d31;
+        }
+
+        .progress-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #80848e;
+        }
+
+        .progress-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .progress-stat i {
+            font-size: 0.85rem;
+        }
+
+        .progress-bar-container {
+            height: 24px;
+            background: #e3e5e8;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .current-folder-info {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .current-folder-name {
+            font-weight: 600;
+            color: #2b2d31;
+            margin-bottom: 8px;
+        }
+
+        .current-folder-phase {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #80848e;
+            font-size: 0.9rem;
+        }
+
+        .phase-indicator {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .phase-step {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            transition: all 0.3s;
+        }
+
+        .phase-step.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .phase-step.completed {
+            background: #3ba55d;
+            color: white;
+        }
+
+        .results-section {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e3e5e8;
+            margin-bottom: 8px;
+        }
+
+        .result-item.success {
+            border-left: 4px solid #3ba55d;
+        }
+
+        .result-item.error {
+            border-left: 4px solid #ed4245;
+        }
+
+        .result-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .result-name {
+            font-weight: 600;
+            color: #2b2d31;
+        }
+
+        .result-details {
+            font-size: 0.85rem;
+            color: #80848e;
+        }
+
+        .result-savings {
+            text-align: right;
+        }
+
+        .result-savings .saved {
+            font-weight: 600;
+            color: #3ba55d;
+        }
+
+        .result-savings .original {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .summary-card {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #3ba55d 0%, #059669 100%);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title"><i class="fas fa-archive"></i> 폴더 일괄 아카이브</div>
+        <div class="header-nav">
+            <a href="index.html"><i class="fas fa-home"></i> 대시보드</a>
+            <a href="folder-download.html">폴더 다운로드</a>
+            <a href="compare.html">폴더 비교</a>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="help-panel">
+            <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+                <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="help-panel-body">
+                <p><strong>일괄 아카이브</strong>는 여러 Google Drive 폴더를 순차적으로 ZIP 압축하여 Drive에 업로드하고, 원본 폴더를 정리하는 도구입니다.</p>
+                <p><strong>사용 방법:</strong></p>
+                <ul>
+                    <li>아카이브할 폴더 URL을 목록에 추가합니다. (여러 개 가능)</li>
+                    <li><strong>하위 폴더 불러오기</strong>로 특정 폴더의 하위 폴더를 자동 추가할 수도 있습니다.</li>
+                    <li><strong>일괄 아카이브 시작</strong>을 클릭하면 각 폴더를 순차적으로 처리합니다.</li>
+                </ul>
+                <p><strong>처리 흐름:</strong> 다운로드 → ZIP 생성 → Drive 업로드 → 원본 휴지통 이동</p>
+                <p><strong>옵션:</strong></p>
+                <ul>
+                    <li><strong>ZIP 파일명 형식</strong>: 폴더명, 날짜 등 조합 선택</li>
+                    <li><strong>업로드 위치</strong>: 상위 폴더(기본) 또는 지정 폴더</li>
+                    <li><strong>삭제 방식</strong>: 휴지통 이동 또는 완전 삭제</li>
+                </ul>
+            </div>
+        </div>
+
+    <div class="container">
+
+        <!-- 부모 폴더에서 불러오기 카드 -->
+        <div class="card full-width">
+            <h2><i class="fas fa-folder-open"></i> 부모 폴더에서 불러오기</h2>
+            <p style="color: #80848e; margin-bottom: 16px;">부모 폴더 URL/ID를 입력하면 직접 하위 폴더들을 자동으로 가져와서 아카이브 목록에 추가합니다.</p>
+
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <input type="text" id="parentFolderInput" class="folder-item-input" style="flex: 1;"
+                       placeholder="부모 폴더 Google Drive URL 또는 ID 입력">
+                <button class="action-btn" id="loadSubfoldersBtn" onclick="loadSubfolders()" style="white-space: nowrap; padding: 10px 20px;">
+                    <i class="fas fa-search"></i> 하위 폴더 불러오기
+                </button>
+            </div>
+
+            <div id="subfoldersLoadingArea" class="hidden" style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+                <i class="fas fa-spinner fa-spin"></i> 하위 폴더 목록을 가져오는 중...
+            </div>
+
+            <div id="subfoldersResultArea" class="hidden" style="margin-top: 12px; padding: 12px; background: #ecfdf5; border-radius: 8px; border: 1px solid #a7f3d0;">
+                <span id="subfoldersResultText"></span>
+            </div>
+        </div>
+
+        <!-- 폴더 입력 카드 -->
+        <div class="card full-width">
+            <h2><i class="fas fa-list"></i> 아카이브할 폴더 목록</h2>
+            <p style="color: #80848e; margin-bottom: 16px;">Google Drive 폴더 URL 또는 ID를 입력하세요. 목록 순서대로 처리됩니다.</p>
+
+            <div class="folder-list-container" id="folderListContainer">
+                <!-- 폴더 항목들이 여기에 동적으로 추가됨 -->
+            </div>
+
+            <button class="add-folder-btn" onclick="addFolderItem()">
+                <i class="fas fa-plus"></i> 폴더 추가
+            </button>
+        </div>
+
+        <!-- 옵션 카드 -->
+        <div class="card full-width">
+            <h2><i class="fas fa-cog"></i> 아카이브 옵션</h2>
+
+            <div class="archive-options">
+                <div class="option-group">
+                    <h4><i class="fas fa-folder"></i> 폴더 옵션</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="includeSubfolders" checked>
+                        <span>하위 폴더 포함</span>
+                    </label>
+                </div>
+
+                <div class="option-group">
+                    <h4><i class="fab fa-google-drive"></i> Google Docs</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="skipGoogleDocs" checked>
+                        <span>Google Docs 건너뛰기</span>
+                    </label>
+                    <small class="form-hint">Google Docs/Sheets/Slides는 직접 다운로드 불가</small>
+                </div>
+
+                <div class="option-group">
+                    <h4><i class="fas fa-file-archive"></i> ZIP 파일명 형식</h4>
+                    <select id="zipNameFormat" class="option-select" style="width: 100%;">
+                        <option value="{folderName}_{date}">{폴더명}_{날짜}</option>
+                        <option value="{folderName}">{폴더명}</option>
+                        <option value="{folderName}_{timestamp}">{폴더명}_{타임스탬프}</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <h4><i class="fas fa-trash-alt"></i> 원본 처리 방식</h4>
+                    <select id="deleteMethod" class="option-select" style="width: 100%;">
+                        <option value="trash">휴지통으로 이동 (권장)</option>
+                        <option value="permanent">완전 삭제 (복구 불가)</option>
+                    </select>
+                </div>
+
+                <div class="option-group" style="grid-column: 1 / -1;">
+                    <h4><i class="fas fa-upload"></i> ZIP 업로드 위치</h4>
+                    <label class="checkbox-label" style="margin-bottom: 8px;">
+                        <input type="checkbox" id="useCustomUploadFolder" onchange="toggleUploadFolderInput()">
+                        <span>지정된 폴더에 업로드</span>
+                    </label>
+                    <input type="text" id="uploadFolderUrl" class="option-input"
+                           placeholder="Google Drive 폴더 URL 또는 ID (비워두면 각 폴더의 상위 폴더에 업로드)"
+                           style="width: 100%; display: none;">
+                    <small class="form-hint" id="uploadFolderHint">기본: 각 폴더의 상위 폴더에 ZIP 파일 생성</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 실행 버튼 -->
+        <div class="card full-width">
+            <div class="actions-grid">
+                <button class="action-btn success" id="startArchiveBtn" onclick="startBatchArchive()">
+                    <i class="fas fa-play"></i>
+                    일괄 아카이브 시작
+                </button>
+                <button class="action-btn warning hidden" id="cancelArchiveBtn" onclick="cancelBatchArchive()">
+                    <i class="fas fa-stop"></i>
+                    작업 취소
+                </button>
+            </div>
+        </div>
+
+        <!-- 진행 상황 카드 -->
+        <div class="card full-width hidden" id="progressCard">
+            <h2><i class="fas fa-tasks"></i> 작업 진행 상황</h2>
+
+            <div class="progress-section">
+                <div class="progress-header">
+                    <div class="progress-title" id="progressTitle">아카이브 진행 중...</div>
+                    <div class="progress-stats">
+                        <div class="progress-stat">
+                            <i class="fas fa-check-circle" style="color: #3ba55d;"></i>
+                            <span id="completedCount">0</span> 완료
+                        </div>
+                        <div class="progress-stat">
+                            <i class="fas fa-times-circle" style="color: #ed4245;"></i>
+                            <span id="errorCount">0</span> 실패
+                        </div>
+                        <div class="progress-stat">
+                            <i class="fas fa-clock" style="color: #faa61a;"></i>
+                            <span id="remainingCount">0</span> 대기
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%;">0%</div>
+                </div>
+
+                <div class="current-folder-info" id="currentFolderInfo">
+                    <div class="current-folder-name" id="currentFolderName">-</div>
+                    <div class="current-folder-phase">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span id="currentPhaseText">대기 중...</span>
+                    </div>
+                    <div class="phase-indicator">
+                        <div class="phase-step" data-phase="downloading">
+                            <i class="fas fa-download"></i> 다운로드
+                        </div>
+                        <div class="phase-step" data-phase="zipping">
+                            <i class="fas fa-file-archive"></i> ZIP 생성
+                        </div>
+                        <div class="phase-step" data-phase="uploading">
+                            <i class="fas fa-upload"></i> 업로드
+                        </div>
+                        <div class="phase-step" data-phase="trashing">
+                            <i class="fas fa-trash"></i> 휴지통
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 결과 카드 -->
+        <div class="card full-width hidden" id="resultsCard">
+            <h2><i class="fas fa-chart-bar"></i> 아카이브 결과</h2>
+
+            <div class="summary-card" id="summaryCard">
+                <div class="summary-item">
+                    <div class="summary-value" id="summaryTotal">0</div>
+                    <div class="summary-label">총 폴더</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="summaryCompleted">0</div>
+                    <div class="summary-label">성공</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="summaryFailed">0</div>
+                    <div class="summary-label">실패</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="summarySaved">0 B</div>
+                    <div class="summary-label">절약된 용량</div>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsList">
+                <!-- 결과 항목들이 여기에 동적으로 추가됨 -->
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/folder-resolve.js"></script>
+    <script src="js/batch-archive.js"></script>
+</body>
+</html>

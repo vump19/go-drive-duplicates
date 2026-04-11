@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오디오 변환 - Google Drive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/admin-page.css">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+    <style>
+        .option-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .option-group {
+            background: #f4f5f7;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .option-group h4 {
+            margin: 0 0 12px 0;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .option-select, .option-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background: white;
+            transition: border-color 0.2s;
+        }
+
+        .option-select:focus, .option-input:focus {
+            outline: none;
+            border-color: #5865f2;
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+        }
+
+        .progress-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f4f5f7 0%, #f4f5f7 100%);
+            border-radius: 12px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .progress-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2b2d31;
+        }
+
+        .progress-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #80848e;
+        }
+
+        .progress-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .progress-bar-container {
+            height: 24px;
+            background: #e3e5e8;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .current-file-info {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .current-file-name {
+            font-weight: 600;
+            color: #2b2d31;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .current-file-phase {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #80848e;
+            font-size: 0.9rem;
+        }
+
+        .phase-indicator {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .phase-step {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            background: #f4f5f7;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            transition: all 0.3s;
+        }
+
+        .phase-step.active {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .phase-step.completed {
+            background: #3ba55d;
+            color: white;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e3e5e8;
+            margin-bottom: 8px;
+        }
+
+        .result-item.success {
+            border-left: 4px solid #3ba55d;
+        }
+
+        .result-item.error {
+            border-left: 4px solid #ed4245;
+        }
+
+        .result-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .result-name {
+            font-weight: 500;
+            color: #2b2d31;
+            word-break: break-all;
+        }
+
+        .result-details {
+            font-size: 0.85rem;
+            color: #80848e;
+        }
+
+        .summary-card {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title"><i class="fas fa-music"></i> 오디오 변환</div>
+        <div class="header-nav">
+            <a href="index.html"><i class="fas fa-home"></i> 대시보드</a>
+        </div>
+    </div>
+
+    <div class="help-panel">
+        <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+            <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="help-panel-body">
+            <p><strong>오디오 변환</strong>은 Google Drive 폴더의 음성 파일들을 다른 형식으로 변환하는 도구입니다. (ffmpeg 기반)</p>
+            <p><strong>사용 방법:</strong></p>
+            <ul>
+                <li>변환할 오디오 파일이 있는 Google Drive 폴더 URL을 입력합니다.</li>
+                <li>변환 형식(MP3, WAV, FLAC 등)과 품질 옵션을 선택합니다.</li>
+                <li><strong>변환 시작</strong>을 클릭하면 변환이 진행됩니다.</li>
+            </ul>
+            <p><strong>참고:</strong> 서버에 ffmpeg가 설치되어 있어야 합니다.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 헤더 -->
+
+        <!-- 입력 섹션 -->
+        <div class="card full-width" id="inputSection">
+            <h2><i class="fas fa-folder-open"></i> 소스 폴더</h2>
+            <p style="color: #80848e; margin-bottom: 16px;">변환할 오디오 파일이 있는 Google Drive 폴더를 입력하세요.</p>
+
+            <input type="text" id="sourceFolderInput" class="option-input" style="margin-top:0;"
+                   placeholder="Google Drive 폴더 URL 또는 ID 입력">
+
+            <label class="checkbox-label" style="margin-top: 12px;">
+                <input type="checkbox" id="includeSubfolders" checked>
+                <span>하위 폴더 포함</span>
+            </label>
+
+            <!-- 소스 형식 선택 -->
+            <div class="option-group" style="margin-top: 16px;">
+                <h4><i class="fas fa-filter"></i> 소스 형식 필터</h4>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin: 0 0 12px 0;">
+                    기본적으로 audio/* MIME 타입 파일을 인식합니다. 3GP 등 video/* MIME으로 분류되는 오디오 파일은 아래에서 추가 선택하세요.
+                </p>
+                <div id="sourceFormatCheckboxes" style="display: flex; flex-wrap: wrap; gap: 8px 16px;">
+                    <!-- 동적으로 체크박스 생성됨 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 출력 설정 -->
+        <div class="card full-width" id="inputSection">
+            <h2><i class="fas fa-cog"></i> 출력 설정</h2>
+
+            <div class="option-row">
+                <div class="option-group">
+                    <h4><i class="fas fa-file-audio"></i> 출력 형식</h4>
+                    <select id="outputFormat" class="option-select">
+                        <option value="mp3">MP3</option>
+                        <option value="wav">WAV</option>
+                        <option value="flac">FLAC</option>
+                        <option value="aac">AAC</option>
+                        <option value="ogg">OGG Vorbis</option>
+                        <option value="m4a">M4A (AAC)</option>
+                        <option value="wma">WMA</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <h4><i class="fas fa-tachometer-alt"></i> 비트레이트</h4>
+                    <select id="bitrate" class="option-select">
+                        <option value="">기본값</option>
+                        <option value="128k">128 kbps</option>
+                        <option value="192k" selected>192 kbps</option>
+                        <option value="256k">256 kbps</option>
+                        <option value="320k">320 kbps</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <h4><i class="fas fa-wave-square"></i> 샘플레이트</h4>
+                    <select id="sampleRate" class="option-select">
+                        <option value="">원본 유지</option>
+                        <option value="22050">22,050 Hz</option>
+                        <option value="44100">44,100 Hz</option>
+                        <option value="48000">48,000 Hz</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="option-row">
+                <div class="option-group" style="grid-column: 1 / -1;">
+                    <h4><i class="fas fa-upload"></i> 출력 폴더</h4>
+                    <input type="text" id="outputFolderInput" class="option-input" style="margin-top:0;"
+                           placeholder="비워두면 원본과 동일한 폴더에 저장됩니다 (폴더 URL 또는 ID)">
+                </div>
+            </div>
+
+            <label class="checkbox-label" style="margin-top: 8px;">
+                <input type="checkbox" id="deleteOriginal">
+                <span style="color: #ed4245;">변환 후 원본 파일 삭제 (휴지통 이동)</span>
+            </label>
+        </div>
+
+        <!-- 실행 버튼 -->
+        <div class="card full-width">
+            <div class="actions-grid">
+                <button class="action-btn success" id="startConvertBtn" onclick="startConversion()">
+                    <i class="fas fa-play"></i>
+                    변환 시작
+                </button>
+                <button class="action-btn warning hidden" id="cancelConvertBtn" onclick="cancelConversion()">
+                    <i class="fas fa-stop"></i>
+                    작업 취소
+                </button>
+            </div>
+        </div>
+
+        <!-- 진행 상황 카드 -->
+        <div class="card full-width hidden" id="progressCard">
+            <h2><i class="fas fa-tasks"></i> 변환 진행 상황</h2>
+
+            <div class="progress-section">
+                <div class="progress-header">
+                    <div class="progress-title" id="progressTitle">변환 진행 중...</div>
+                    <div class="progress-stats">
+                        <div class="progress-stat">
+                            <i class="fas fa-check-circle" style="color: #3ba55d;"></i>
+                            <span id="completedCount">0</span> 완료
+                        </div>
+                        <div class="progress-stat">
+                            <i class="fas fa-times-circle" style="color: #ed4245;"></i>
+                            <span id="failedCount">0</span> 실패
+                        </div>
+                        <div class="progress-stat">
+                            <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                            <span id="remainingCount">0</span>/<span id="totalCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%;">0%</div>
+                </div>
+
+                <div class="current-file-info">
+                    <div class="current-file-name" id="currentFileName">-</div>
+                    <div class="current-file-phase">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span id="currentPhaseText">대기 중...</span>
+                    </div>
+                    <div class="phase-indicator">
+                        <div class="phase-step" data-phase="downloading">
+                            <i class="fas fa-download"></i> 다운로드
+                        </div>
+                        <div class="phase-step" data-phase="converting">
+                            <i class="fas fa-exchange-alt"></i> 변환
+                        </div>
+                        <div class="phase-step" data-phase="uploading">
+                            <i class="fas fa-upload"></i> 업로드
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 결과 카드 -->
+        <div class="card full-width hidden" id="resultsCard">
+            <h2><i class="fas fa-chart-bar"></i> 변환 결과</h2>
+
+            <div class="summary-card">
+                <div class="summary-item">
+                    <div class="summary-value" id="summaryTotal">0</div>
+                    <div class="summary-label">총 파일</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="summaryCompleted">0</div>
+                    <div class="summary-label">성공</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="summaryFailed">0</div>
+                    <div class="summary-label">실패</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="summarySizeChange">-</div>
+                    <div class="summary-label">용량 변화</div>
+                </div>
+            </div>
+
+            <div id="resultsList" style="margin-top: 20px;">
+                <!-- 결과 항목 동적 추가 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js?v=20260223"></script>
+    <script src="js/utils.js?v=20260223"></script>
+    <script src="js/folder-resolve.js?v=20260223"></script>
+    <script src="js/audio-convert.js?v=20260223"></script>
+</body>
+</html>

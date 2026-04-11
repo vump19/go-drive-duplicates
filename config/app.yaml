@@ -1,0 +1,74 @@
+server:
+    host: localhost
+    port: 9090
+    read_timeout: 300s
+    write_timeout: 300s
+    idle_timeout: 300s
+    api_timeout: 300s
+    enable_tls: false
+    cert_file: ""
+    key_file: ""
+database:
+    path: ./drive_duplicates.db
+    max_open_conns: 25
+    max_idle_conns: 5
+    max_lifetime: 1h
+google_drive:
+    api_key: ""
+    credentials_path: ./credentials.json
+    scopes:
+        - https://www.googleapis.com/auth/drive.readonly
+    max_retries: 3
+    request_timeout: 300s
+hash:
+    algorithm: sha256
+    worker_count: 4
+    max_file_size: 1073741824
+    buffer_size: 65536
+processing:
+    batch_size: 100
+    worker_count: 5
+    save_interval: 30s
+    max_retries: 3
+deletion:
+    batch_size: 10
+    worker_count: 5
+    progress_update_interval: 5
+    enable_parallel: true
+logging:
+    level: info
+    format: text
+    output: stdout
+    max_size: 100
+    max_backups: 3
+    max_age: 7
+    compress: true
+security:
+    enable_cors: true
+    allowed_origins:
+        - '*'
+    rate_limit: 100
+    enable_rate_limit: false
+    secret_key: ""
+ai:
+    api_key: ""
+    model: ""
+    # 멀티 프로바이더 설정 (providers가 있으면 위의 api_key/model 대신 사용)
+    # providers:
+    #     - name: claude
+    #       api_key: "sk-ant-..."
+    #       model: ""  # 기본값: claude-sonnet-4-5-20250929
+    #     - name: gemini
+    #       api_key: "AIza..."
+    #       model: ""  # 기본값: gemini-2.0-flash
+    #     - name: openai
+    #       api_key: "sk-..."
+    #       model: ""  # 기본값: gpt-4o
+smart_organizer:
+    poll_interval: ""
+    max_files_per_run: 0
+telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
+environment: development

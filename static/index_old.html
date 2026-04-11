@@ -1,0 +1,3093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive 중복 파일 관리 대시보드</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/index.css">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 헤더 */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        /* 상태 카드들 */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            margin-right: 16px;
+        }
+
+        .card-icon.system { background: linear-gradient(135deg, #10b981, #059669); }
+        .card-icon.files { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .card-icon.duplicates { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .card-icon.savings { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .card-title {
+            font-size: 1rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .card-subtitle {
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
+
+        /* 빠른 작업 섹션 */
+        .quick-actions {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 60px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .secondary-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(149, 165, 166, 0.3);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .secondary-btn:hover {
+            background: linear-gradient(45deg, #7f8c8d, #95a5a6);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(149, 165, 166, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .action-btn.secondary:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .action-btn.tertiary {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .action-btn.tertiary:hover {
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+
+        .action-btn.info {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .action-btn.info:hover {
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        /* 진행 상황 */
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-item {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progress-title {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .progress-percentage {
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            transition: width 0.5s ease;
+        }
+
+        .progress-details {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        /* 최근 결과 */
+        .recent-results {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .result-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .result-name {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .result-count {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .result-size {
+            font-weight: 700;
+            color: #3b82f6;
+            margin-right: 16px;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+
+        .btn-danger:hover {
+            background: #fecaca;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* 로딩 상태 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .status-grid,
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <h1><i class="fas fa-search-plus"></i> Google Drive 중복 파일 관리</h1>
+            <p>구글 드라이브의 중복 파일을 찾고 정리하여 저장공간을 확보하세요</p>
+        </div>
+
+        <!-- 상태 카드들 -->
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="card-header">
+                    <div class="card-icon system">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="card-title">시스템 상태</div>
+                </div>
+                <div class="card-value" id="system-status">확인 중...</div>
+                <div class="card-subtitle" id="system-subtitle">Google Drive 연결 확인 중</div>
+            </div>
+
+            <div class="status-card">
+                <div class="card-header">
+                    <div class="card-icon files">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="card-title">스캔된 파일</div>
+                </div>
+                <div class="card-value" id="total-files">0</div>
+                <div class="card-subtitle" id="total-size">총 크기: 0 B</div>
+            </div>
+
+            <div class="status-card">
+                <div class="card-header">
+                    <div class="card-icon duplicates">
+                        <i class="fas fa-copy"></i>
+                    </div>
+                    <div class="card-title">중복 그룹</div>
+                </div>
+                <div class="card-value" id="duplicate-groups">0</div>
+                <div class="card-subtitle" id="duplicate-files">중복 파일: 0개</div>
+            </div>
+
+            <div class="status-card">
+                <div class="card-header">
+                    <div class="card-icon savings">
+                        <i class="fas fa-hdd"></i>
+                    </div>
+                    <div class="card-title">절약 가능 용량</div>
+                </div>
+                <div class="card-value" id="potential-savings">0 B</div>
+                <div class="card-subtitle">중복 파일 삭제 시</div>
+            </div>
+        </div>
+
+        <!-- 빠른 작업 -->
+        <div class="quick-actions">
+            <h2 class="section-title">
+                <i class="fas fa-bolt"></i>
+                빠른 작업
+            </h2>
+            <div class="actions-grid">
+                <button class="action-btn" onclick="startScan()">
+                    <i class="fas fa-search-plus"></i>
+                    중복 검사 시작
+                </button>
+                <button class="action-btn secondary" onclick="compareFolders()">
+                    <i class="fas fa-folder-open"></i>
+                    폴더 비교
+                </button>
+                <button class="action-btn tertiary" onclick="findSingleFolderDuplicates()">
+                    <i class="fas fa-search"></i>
+                    폴더 내 중복 검색
+                </button>
+                <button class="action-btn tertiary" onclick="cleanupFiles()">
+                    <i class="fas fa-broom"></i>
+                    정리 작업
+                </button>
+                <button class="action-btn info" onclick="showStats()">
+                    <i class="fas fa-chart-bar"></i>
+                    통계 보기
+                </button>
+            </div>
+        </div>
+
+        <!-- 진행 중인 작업 -->
+        <div class="progress-section">
+            <h2 class="section-title">
+                <i class="fas fa-tasks"></i>
+                진행 중인 작업
+            </h2>
+            <div id="progress-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>진행 중인 작업이 없습니다</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 최근 결과 -->
+        <div class="recent-results">
+            <h2 class="section-title">
+                <i class="fas fa-history"></i>
+                최근 중복 그룹
+            </h2>
+            <div id="recent-duplicates">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>중복 파일 정보를 불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API 기본 설정
+        const API_BASE = 'http://localhost:9090';
+        
+        // 유틸리티 함수들
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        // API 호출 함수들
+        async function fetchData(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`API 호출 실패 (${method} ${endpoint}):`, error);
+                throw error;
+            }
+        }
+
+        // 상태 카드 업데이트
+        async function updateStatusCards() {
+            try {
+                // 시스템 상태 확인
+                try {
+                    const health = await fetchData('/health');
+                    document.getElementById('system-status').textContent = '정상';
+                    document.getElementById('system-status').style.color = '#10b981';
+                    document.getElementById('system-subtitle').textContent = 'Google Drive 연결: 정상';
+                } catch (error) {
+                    document.getElementById('system-status').textContent = '오류';
+                    document.getElementById('system-status').style.color = '#ef4444';
+                    document.getElementById('system-subtitle').textContent = 'Google Drive 연결: 오류';
+                }
+
+                // 파일 통계 업데이트 (실제 데이터 사용)
+                try {
+                    const duplicatesResponse = await fetchData('/api/duplicates/groups?page=1&limit=100');
+                    
+                    // 새로운 페이지네이션 응답 형식 처리
+                    let duplicates = [];
+                    let totalGroupsCount = 0;
+                    
+                    if (duplicatesResponse && duplicatesResponse.groups && Array.isArray(duplicatesResponse.groups)) {
+                        duplicates = duplicatesResponse.groups;
+                        totalGroupsCount = duplicatesResponse.totalGroups || duplicates.length;
+                    } else if (Array.isArray(duplicatesResponse)) {
+                        // 이전 API 형식과의 호환성
+                        duplicates = duplicatesResponse;
+                        totalGroupsCount = duplicates.length;
+                    }
+                    
+                    if (duplicates.length > 0) {
+                        let totalDuplicateFiles = 0;
+                        let totalWastedSpace = 0;
+                        let totalSize = 0;
+                        
+                        duplicates.forEach(group => {
+                            totalDuplicateFiles += group.count || 0;
+                            totalSize += group.totalSize || 0;
+                            const individualFileSize = group.files && group.files.length > 0 ? 
+                                group.files[0].size : (group.totalSize || 0) / (group.count || 1);
+                            totalWastedSpace += (group.count - 1) * individualFileSize;
+                        });
+                        
+                        document.getElementById('total-files').textContent = formatNumber(totalDuplicateFiles);
+                        document.getElementById('total-size').textContent = `총 크기: ${formatFileSize(totalSize)}`;
+                        document.getElementById('duplicate-groups').textContent = formatNumber(totalGroupsCount);
+                        document.getElementById('duplicate-files').textContent = `중복 파일: ${formatNumber(totalDuplicateFiles)}개`;
+                        document.getElementById('potential-savings').textContent = formatFileSize(totalWastedSpace);
+                    } else {
+                        // 중복 파일이 없는 경우
+                        document.getElementById('total-files').textContent = '0';
+                        document.getElementById('total-size').textContent = '총 크기: 0 B';
+                        document.getElementById('duplicate-groups').textContent = '0';
+                        document.getElementById('duplicate-files').textContent = '중복 파일: 0개';
+                        document.getElementById('potential-savings').textContent = '0 B';
+                    }
+                } catch (error) {
+                    console.log('통계 데이터 로드 실패, 기본값 유지:', error);
+                    document.getElementById('total-files').textContent = '-';
+                    document.getElementById('total-size').textContent = '총 크기: -';
+                    document.getElementById('duplicate-groups').textContent = '-';
+                    document.getElementById('duplicate-files').textContent = '중복 파일: -개';
+                    document.getElementById('potential-savings').textContent = '-';
+                }
+            } catch (error) {
+                console.error('상태 카드 업데이트 실패:', error);
+            }
+        }
+
+        // 진행 상황 업데이트
+        async function updateProgress() {
+            try {
+                const progress = await fetchData('/api/duplicates/progress');
+                const container = document.getElementById('progress-container');
+                
+                if (progress && (progress.status === 'running' || progress.status === 'pending')) {
+                    const percent = progress.totalItems > 0 ? Math.round((progress.processedItems / progress.totalItems) * 100) : 0;
+                    container.innerHTML = `
+                        <div class="progress-item">
+                            <div class="progress-header">
+                                <div class="progress-title">
+                                    <i class="fas fa-search"></i> 중복 파일 검색
+                                </div>
+                                <div class="progress-percentage">${percent}%</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${percent}%"></div>
+                            </div>
+                            <div class="progress-details">
+                                ${progress.currentStep || '검색 중...'} - ${formatNumber(progress.processedItems || 0)} / ${formatNumber(progress.totalItems || 0)} 항목 처리됨
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="loading">
+                            <i class="fas fa-check-circle" style="font-size: 2rem; color: #10b981; margin-bottom: 16px;"></i>
+                            <div>진행 중인 작업이 없습니다</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('진행 상황 업데이트 실패:', error);
+            }
+        }
+
+        // 최근 중복 파일 업데이트
+        async function updateRecentDuplicates() {
+            try {
+                const duplicatesResponse = await fetchData('/api/duplicates/groups?page=1&limit=5');
+                const container = document.getElementById('recent-duplicates');
+                
+                // 새로운 페이지네이션 응답 형식 처리
+                let duplicates = [];
+                
+                if (duplicatesResponse && duplicatesResponse.groups && Array.isArray(duplicatesResponse.groups)) {
+                    duplicates = duplicatesResponse.groups;
+                } else if (Array.isArray(duplicatesResponse)) {
+                    // 이전 API 형식과의 호환성
+                    duplicates = duplicatesResponse;
+                }
+                
+                if (duplicates.length === 0) {
+                    container.innerHTML = `
+                        <div class="loading">
+                            <i class="fas fa-inbox" style="font-size: 2rem; color: #6b7280; margin-bottom: 16px;"></i>
+                            <div>중복 파일을 찾지 못했습니다</div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = duplicates.map(group => {
+                        const fileName = group.files && group.files.length > 0 ? group.files[0].name : '이름 없음';
+                        const wastedSpace = group.files && group.files.length > 0 ? 
+                            (group.count - 1) * group.files[0].size : 0;
+                        return `
+                        <div class="result-item">
+                            <div class="result-info">
+                                <div class="result-name">${fileName}</div>
+                                <div class="result-count">${group.count || 0}개 중복 파일 (${formatFileSize(wastedSpace)} 절약 가능)</div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <div class="result-size">${formatFileSize(group.totalSize || 0)}</div>
+                                <div class="result-actions">
+                                    <button class="btn-sm btn-danger" onclick="quickDelete('${group.id}')">
+                                        빠른 삭제
+                                    </button>
+                                    <button class="btn-sm btn-secondary" onclick="viewGroup('${group.id}')">
+                                        상세보기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `}).join('');
+                }
+            } catch (error) {
+                console.error('최근 중복 파일 업데이트 실패:', error);
+                // 임시로 샘플 데이터 표시
+                document.getElementById('recent-duplicates').innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #6b7280;">
+                        <i class="fas fa-info-circle" style="font-size: 2rem; color: #3b82f6; margin-bottom: 16px;"></i>
+                        <div>아직 중복 파일 검사를 하지 않았습니다</div>
+                        <button class="action-btn" onclick="startScan()" style="margin-top: 16px; padding: 12px 24px; font-size: 0.9rem;">
+                            <i class="fas fa-search-plus"></i>
+                            중복 검사 시작하기
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 액션 함수들
+        async function startScan() {
+            if (!confirm('중복 파일 검사를 시작하시겠습니까?')) return;
+            
+            try {
+                await fetch(`${API_BASE}/api/duplicates/find`, { method: 'POST' });
+                alert('중복 파일 검사를 시작했습니다!');
+                updateProgress();
+                updateRecentDuplicates();
+            } catch (error) {
+                alert('검사 시작 실패: ' + error.message);
+            }
+        }
+
+        // 폴더 비교 관련 변수들
+        let currentComparisonId = null;
+        let comparisonProgressInterval = null;
+        let deletionProgressInterval = null;
+
+        function compareFolders() {
+            document.getElementById('folderComparisonModal').style.display = 'flex';
+            showStep('folderInputStep');
+            resetFolderComparisonModal();
+        }
+
+        function closeFolderComparisonModal() {
+            document.getElementById('folderComparisonModal').style.display = 'none';
+            clearInterval(comparisonProgressInterval);
+            clearInterval(deletionProgressInterval);
+        }
+
+        function resetFolderComparisonModal() {
+            // Clear input values
+            document.getElementById('sourceFolderUrl').value = '';
+            document.getElementById('targetFolderUrl').value = '';
+            document.getElementById('includeSubfolders').checked = true;
+            document.getElementById('deepComparison').checked = true;
+            
+            // Reset progress
+            document.getElementById('comparisonProgressBar').style.width = '0%';
+            document.getElementById('comparisonProgressText').textContent = '비교 작업 준비 중...';
+            document.getElementById('deletionProgressBar').style.width = '0%';
+            document.getElementById('deletionProgressText').textContent = '삭제 작업 준비 중...';
+            
+            // Clear results
+            document.getElementById('comparisonSummary').innerHTML = '';
+            document.getElementById('deletionOptions').innerHTML = '';
+            document.getElementById('duplicateFilesList').innerHTML = '';
+            document.getElementById('deletionStatus').innerHTML = '';
+            
+            currentComparisonId = null;
+        }
+
+        function showStep(stepId) {
+            const steps = ['folderInputStep', 'comparisonProgress', 'comparisonResult', 'deletionProgress'];
+            steps.forEach(id => {
+                document.getElementById(id).style.display = id === stepId ? 'block' : 'none';
+            });
+        }
+
+        async function startFolderComparison() {
+            const sourceFolderUrl = document.getElementById('sourceFolderUrl').value.trim();
+            const targetFolderUrl = document.getElementById('targetFolderUrl').value.trim();
+            
+            if (!sourceFolderUrl || !targetFolderUrl) {
+                alert('기준 폴더와 대상 폴더 URL을 모두 입력해주세요.');
+                return;
+            }
+
+            try {
+                // Extract folder IDs from URLs
+                const sourceFolderId = await extractFolderIdFromUrl(sourceFolderUrl);
+                const targetFolderId = await extractFolderIdFromUrl(targetFolderUrl);
+
+                console.log('Starting folder comparison:', { sourceFolderId, targetFolderId });
+
+                showStep('comparisonProgress');
+
+                const requestBody = {
+                    sourceFolderId: sourceFolderId,
+                    targetFolderId: targetFolderId,
+                    includeSubfolders: document.getElementById('includeSubfolders').checked,
+                    deepComparison: document.getElementById('deepComparison').checked,
+                    forceNewComparison: document.getElementById('forceNewComparison').checked
+                };
+
+                const response = await fetchData('/api/compare/folders', 'POST', requestBody);
+                console.log('폴더 비교 API 응답:', response);
+                
+                if (response && response.progress) {
+                    // 새로운 비교 작업이 시작된 경우
+                    console.log('새로운 비교 작업 시작:', response.progress);
+                    currentComparisonId = response.progress.id;
+                    startComparisonProgressTracking();
+                } else if (response && response.comparisonResult) {
+                    // 기존 비교 결과가 있는 경우
+                    displayComparisonResult(response.comparisonResult);
+                    showStep('comparisonResultStep');
+                } else {
+                    console.error('예상치 못한 응답 구조:', response);
+                    throw new Error('비교 작업 시작에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('Folder comparison error:', error);
+                alert('폴더 비교 중 오류가 발생했습니다: ' + error.message);
+                showStep('folderInputStep');
+            }
+        }
+
+        async function extractFolderIdFromUrl(url) {
+            try {
+                const response = await fetchData('/api/utils/extract-folder-id', 'POST', { url });
+                return response.folderId;
+            } catch (error) {
+                console.error('Failed to extract folder ID:', error);
+                throw new Error('폴더 URL에서 ID를 추출할 수 없습니다: ' + url);
+            }
+        }
+
+        // 비교 시작 시간을 저장하는 변수 추가
+        let comparisonStartTime = null;
+        let elapsedTimeInterval = null;
+
+        // 폴더 비교 모달 관리 함수들
+        function openFolderComparisonModal() {
+            document.getElementById('folderComparisonModal').style.display = 'block';
+            showStep('folderInputStep');
+            // 모달 열릴 때 자동으로 중단된 작업 확인
+            checkPendingComparisons();
+        }
+
+        function closeFolderComparisonModal() {
+            document.getElementById('folderComparisonModal').style.display = 'none';
+            // 진행 중인 작업 정리
+            if (comparisonProgressInterval) {
+                clearInterval(comparisonProgressInterval);
+            }
+            if (elapsedTimeInterval) {
+                clearInterval(elapsedTimeInterval);
+            }
+        }
+
+        // 중단된 작업 확인 및 표시
+        async function checkPendingComparisons() {
+            try {
+                const pendingComparisons = await fetchData('/api/compare/pending');
+                const pendingSection = document.getElementById('pendingComparisons');
+                const pendingList = document.getElementById('pendingComparisonsList');
+                
+                if (pendingComparisons && pendingComparisons.length > 0) {
+                    pendingSection.style.display = 'block';
+                    pendingList.innerHTML = '';
+                    
+                    pendingComparisons.forEach(comparison => {
+                        const comparisonItem = createPendingComparisonItem(comparison);
+                        pendingList.appendChild(comparisonItem);
+                    });
+                } else {
+                    pendingSection.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('중단된 작업 확인 실패:', error);
+            }
+        }
+
+        function createPendingComparisonItem(comparison) {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding: 10px; margin: 5px 0; border: 1px solid #dee2e6; border-radius: 5px; background: white;';
+            
+            const sourceFolderId = comparison.metadata?.sourceFolderId || '알 수 없음';
+            const targetFolderId = comparison.metadata?.targetFolderId || '알 수 없음';
+            const currentPhase = comparison.metadata?.currentPhase || '알 수 없음';
+            const progressText = `${comparison.processedItems || 0} / ${comparison.totalItems || 0}`;
+            
+            const statusColor = getStatusColor(comparison.status);
+            const phaseText = getPhaseText(currentPhase);
+            
+            item.innerHTML = `
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">
+                            📂 ${sourceFolderId.substring(0, 8)}... → 📁 ${targetFolderId.substring(0, 8)}...
+                        </div>
+                        <div style="font-size: 0.9rem; color: #666;">
+                            <span style="color: ${statusColor};">●</span> ${comparison.status} | 
+                            ${phaseText} | 진행률: ${progressText}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #999; margin-top: 3px;">
+                            시작: ${new Date(comparison.startTime).toLocaleString('ko-KR')}
+                        </div>
+                    </div>
+                    <div style="margin-left: 10px;">
+                        <button class="secondary-btn" onclick="resumeComparison(${comparison.id})" 
+                                style="padding: 5px 10px; font-size: 0.8rem;">
+                            <i class="fas fa-play"></i> 재개
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return item;
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'running': return '#28a745';
+                case 'paused': return '#ffc107';
+                case 'failed': return '#dc3545';
+                default: return '#6c757d';
+            }
+        }
+
+        function getPhaseText(phase) {
+            switch (phase) {
+                case 'initialized': return '초기화됨';
+                case 'scanning_source': return '기준 폴더 스캔 중';
+                case 'source_completed': return '기준 폴더 완료';
+                case 'scanning_target': return '대상 폴더 스캔 중';
+                case 'target_completed': return '대상 폴더 완료';
+                case 'calculating_hashes': return '해시 계산 중';
+                case 'hashes_completed': return '해시 계산 완료';
+                case 'comparing_files': return '파일 비교 중';
+                case 'saving_results': return '결과 저장 중';
+                case 'completed': return '완료됨';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 작업 재개 함수
+        async function resumeComparison(progressId) {
+            try {
+                addLogEntry(`🔄 작업 재개 중... (Progress ID: ${progressId})`, 'info');
+                
+                const response = await fetchData('/api/compare/resume', 'POST', {
+                    progressId: progressId
+                });
+                
+                if (response && response.progress) {
+                    currentComparisonId = response.progress.id;
+                    
+                    // 진행 상황 화면으로 전환
+                    showStep('comparisonProgress');
+                    
+                    // 중단된 작업 섹션 숨기기
+                    document.getElementById('pendingComparisons').style.display = 'none';
+                    
+                    // 진행 상황 추적 시작
+                    startComparisonProgressTracking();
+                    
+                    addLogEntry('✅ 작업이 성공적으로 재개되었습니다!', 'success');
+                } else {
+                    throw new Error('작업 재개 응답이 올바르지 않습니다.');
+                }
+            } catch (error) {
+                console.error('작업 재개 실패:', error);
+                alert('작업 재개에 실패했습니다: ' + error.message);
+                addLogEntry('❌ 작업 재개에 실패했습니다: ' + error.message, 'error');
+            }
+        }
+
+        function startComparisonProgressTracking() {
+            if (!currentComparisonId) return;
+            comparisonStartTime = Date.now();
+            
+            // 로그 초기화
+            initializeProgressLog();
+
+            comparisonProgressInterval = setInterval(async () => {
+                try {
+                    const progress = await fetchData(`/api/compare/progress?id=${currentComparisonId}`);
+                    
+                    if (progress) {
+                        updateDetailedProgress(progress);
+                        
+                        const percentage = progress.totalItems > 0 ? Math.round((progress.processedItems / progress.totalItems) * 100) : 0;
+                        document.getElementById('comparisonProgressBar').style.width = percentage + '%';
+                        document.getElementById('comparisonProgressText').textContent = 
+                            `${progress.currentStep || '비교 진행 중...'} (${percentage}%)`;
+
+                        if (progress.status === 'completed') {
+                            clearInterval(comparisonProgressInterval);
+                            clearInterval(elapsedTimeInterval);
+                            addLogEntry('✅ 폴더 비교가 완료되었습니다!', 'success');
+                            await loadComparisonResult();
+                        } else if (progress.status === 'failed') {
+                            clearInterval(comparisonProgressInterval);
+                            clearInterval(elapsedTimeInterval);
+                            addLogEntry('❌ 폴더 비교에 실패했습니다: ' + (progress.errorMessage || '알 수 없는 오류'), 'error');
+                            alert('폴더 비교에 실패했습니다: ' + (progress.errorMessage || '알 수 없는 오류'));
+                            showStep('folderInputStep');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Progress tracking error:', error);
+                    addLogEntry('⚠️ 진행 상황 확인 중 오류 발생: ' + error.message, 'warning');
+                }
+            }, 1000);
+            
+            // 경과 시간 업데이트용 별도 타이머
+            elapsedTimeInterval = setInterval(updateElapsedTime, 1000);
+        }
+
+        function updateDetailedProgress(progress) {
+            
+            // 폴더 정보 업데이트 (처음 한 번만)
+            if (!updateDetailedProgress.foldersInitialized) {
+                updateFolderNames();
+                updateDetailedProgress.foldersInitialized = true;
+            }
+            
+            // 현재 작업 상태 업데이트
+            const currentTask = document.getElementById('currentTask');
+            if (currentTask) {
+                currentTask.textContent = progress.currentStep || '비교 진행 중...';
+            }
+            
+            // 처리된 파일 수 업데이트
+            const processedFiles = document.getElementById('processedFiles');
+            if (processedFiles) {
+                const completed = progress.processedItems || 0;
+                const total = progress.totalItems || 0;
+                processedFiles.textContent = total > 0 ? `${completed} / ${total}개` : `${completed}개`;
+            }
+            
+            // 해시 계산 진행 상황 업데이트
+            const hashProgress = document.getElementById('hashProgress');
+            if (hashProgress) {
+                if (progress.currentStep && progress.currentStep.includes('해시')) {
+                    const percentage = progress.totalItems > 0 ? Math.round((progress.processedItems / progress.totalItems) * 100) : 0;
+                    hashProgress.textContent = `${percentage}% 완료`;
+                    hashProgress.style.color = '#3b82f6';
+                } else if (progress.status === 'completed') {
+                    hashProgress.textContent = '완료';
+                    hashProgress.style.color = '#10b981';
+                } else if (progress.currentStep && !progress.currentStep.includes('해시')) {
+                    hashProgress.textContent = '대기 중';
+                    hashProgress.style.color = '#6b7280';
+                }
+            }
+            
+            // 상세 진행 상황별 처리
+            if (progress.currentStep) {
+                if (progress.currentStep.includes('기준 폴더')) {
+                    const sourceProgress = document.getElementById('sourceProgress');
+                    if (sourceProgress) {
+                        sourceProgress.textContent = '파일 조회 중...';
+                        sourceProgress.style.color = '#3b82f6';
+                    }
+                } else if (progress.currentStep.includes('대상 폴더')) {
+                    const sourceProgress = document.getElementById('sourceProgress');
+                    const targetProgress = document.getElementById('targetProgress');
+                    if (sourceProgress) {
+                        sourceProgress.textContent = '완료';
+                        sourceProgress.style.color = '#10b981';
+                    }
+                    if (targetProgress) {
+                        targetProgress.textContent = '파일 조회 중...';
+                        targetProgress.style.color = '#3b82f6';
+                    }
+                } else if (progress.currentStep.includes('해시 계산') || progress.currentStep.includes('중복 파일 검색')) {
+                    const sourceProgress = document.getElementById('sourceProgress');
+                    const targetProgress = document.getElementById('targetProgress');
+                    if (sourceProgress) {
+                        sourceProgress.textContent = '완료';
+                        sourceProgress.style.color = '#10b981';
+                    }
+                    if (targetProgress) {
+                        targetProgress.textContent = '완료';
+                        targetProgress.style.color = '#10b981';
+                    }
+                }
+            }
+            
+            // 실시간 로그 추가
+            if (progress.currentStep && progress.currentStep !== updateDetailedProgress.lastStep) {
+                updateDetailedProgress.lastStep = progress.currentStep;
+                addLogEntry('🔍 ' + progress.currentStep, 'info');
+            }
+            
+            // 중요한 이정표에서 로그 추가
+            if (progress.processedItems && progress.totalItems) {
+                const percentage = Math.round((progress.processedItems / progress.totalItems) * 100);
+                if (percentage > 0 && percentage % 25 === 0 && percentage !== updateDetailedProgress.lastPercentage) {
+                    updateDetailedProgress.lastPercentage = percentage;
+                    addLogEntry(`📊 진행률: ${percentage}% (${progress.processedItems}/${progress.totalItems}개 파일 처리)`, 'info');
+                }
+            }
+        }
+
+        function updateFolderNames() {
+            const sourceFolderUrl = document.getElementById('sourceFolderUrl')?.value || '';
+            const targetFolderUrl = document.getElementById('targetFolderUrl')?.value || '';
+            
+            // 폴더 이름 또는 ID 표시
+            const sourceProgress = document.getElementById('sourceProgress');
+            const targetProgress = document.getElementById('targetProgress');
+            
+            if (sourceProgress) {
+                const sourceName = extractFolderNameFromUrl(sourceFolderUrl) || '기준 폴더';
+                sourceProgress.textContent = sourceName;
+            }
+            
+            if (targetProgress) {
+                const targetName = extractFolderNameFromUrl(targetFolderUrl) || '대상 폴더';
+                targetProgress.textContent = targetName;
+            }
+        }
+
+        function extractFolderNameFromUrl(url) {
+            if (!url) return null;
+            
+            // URL에서 폴더 ID 추출
+            const patterns = [
+                /\/folders\/([a-zA-Z0-9_-]+)/,
+                /[?&]id=([a-zA-Z0-9_-]+)/
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    return match[1].substring(0, 10) + '...'; // ID의 앞 10자리만 표시
+                }
+            }
+            
+            return url.length > 20 ? url.substring(0, 20) + '...' : url;
+        }
+
+        function updateElapsedTime() {
+            if (!comparisonStartTime) return;
+            
+            const elapsedSeconds = Math.floor((Date.now() - comparisonStartTime) / 1000);
+            const hours = Math.floor(elapsedSeconds / 3600);
+            const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+            const seconds = elapsedSeconds % 60;
+            
+            let timeString = '';
+            if (hours > 0) {
+                timeString = `${hours}시간 ${minutes}분 ${seconds}초`;
+            } else if (minutes > 0) {
+                timeString = `${minutes}분 ${seconds}초`;
+            } else {
+                timeString = `${seconds}초`;
+            }
+            
+            const elapsedTimeElement = document.getElementById('elapsedTime');
+            if (elapsedTimeElement) {
+                elapsedTimeElement.textContent = timeString;
+            }
+        }
+
+        function initializeProgressLog() {
+            // 진행 상황 추적 변수 초기화
+            updateDetailedProgress.lastStep = null;
+            updateDetailedProgress.lastPercentage = null;
+            updateDetailedProgress.foldersInitialized = false;
+            
+            // 로그 컨테이너 초기화
+            const logContainer = document.getElementById('progressLog');
+            if (logContainer) {
+                logContainer.innerHTML = '<div class="log-entry">비교 작업을 시작합니다...</div>';
+            }
+            
+            // 상세 정보 초기화
+            const elements = {
+                'sourceProgress': '-',
+                'targetProgress': '-',
+                'currentTask': '시작 중...',
+                'processedFiles': '0개',
+                'elapsedTime': '0초',
+                'hashProgress': '대기 중'
+            };
+            
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = value;
+                    element.style.color = '';
+                }
+            });
+            
+            addLogEntry('🚀 폴더 비교 작업을 시작합니다...', 'info');
+        }
+
+        function addLogEntry(message, type = 'default') {
+            const logContainer = document.getElementById('progressLog');
+            if (!logContainer) return;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            
+            // 현재 시간을 추가
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ko-KR', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+            
+            logEntry.textContent = `[${timeStr}] ${message}`;
+            
+            // 새 로그를 맨 위에 추가
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            
+            // 로그가 너무 많으면 오래된 것들 삭제 (최대 50개 유지)
+            while (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        async function loadComparisonResult() {
+            try {
+                const sourceFolderId = await extractFolderIdFromUrl(document.getElementById('sourceFolderUrl').value);
+                const targetFolderId = await extractFolderIdFromUrl(document.getElementById('targetFolderUrl').value);
+                
+                const result = await fetchData(`/api/compare/result/load?sourceFolderId=${sourceFolderId}&targetFolderId=${targetFolderId}`);
+                
+                if (result) {
+                    displayComparisonResult(result);
+                    showStep('comparisonResult');
+                } else {
+                    throw new Error('비교 결과를 불러올 수 없습니다.');
+                }
+            } catch (error) {
+                console.error('Failed to load comparison result:', error);
+                alert('비교 결과를 불러오는 중 오류가 발생했습니다: ' + error.message);
+                showStep('folderInputStep');
+            }
+        }
+
+        function displayComparisonResult(result) {
+            // Set the current comparison ID for deletion operations
+            currentComparisonId = result.id;
+            
+            // Get target folder ID
+            const targetId = result.targetFolderId || result.TargetFolderID || result.target_folder_id || result.targetFolderID;
+            
+            const summaryHtml = `
+                <div class="comparison-summary">
+                    <h4>📊 비교 결과</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
+                        <div>
+                            <strong>기준 폴더:</strong> ${result.sourceFolderName}<br>
+                            <small>파일 수: ${result.sourceFileCount}개, 크기: ${formatFileSize(result.sourceTotalSize)}</small>
+                        </div>
+                        <div>
+                            <strong>대상 폴더:</strong> ${result.targetFolderName}<br>
+                            <small>파일 수: ${result.targetFileCount}개, 크기: ${formatFileSize(result.targetTotalSize)}</small>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: ${result.duplicationPercentage === 100 ? '#ef4444' : '#f59e0b'};">
+                            ${result.duplicationPercentage.toFixed(1)}% 중복
+                        </div>
+                        <div style="color: #666; margin-top: 5px;">
+                            ${result.duplicateCount || 0}개 중복 파일, ${formatFileSize(result.duplicateSize || 0)} 절약 가능
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('comparisonSummary').innerHTML = summaryHtml;
+            
+            // Show deletion options
+            displayDeletionOptions(result);
+            
+            // Show duplicate files list if not 100% duplicated
+            if (result.duplicationPercentage < 100 && result.duplicateFiles && result.duplicateFiles.length > 0) {
+                displayDuplicateFilesList(result.duplicateFiles);
+            }
+        }
+
+        function displayDeletionOptions(result) {
+            let optionsHtml = '';
+            
+            // Find the target folder ID using multiple possible field names
+            const targetId = result.targetFolderId || result.TargetFolderID || result.target_folder_id || result.targetFolderID;
+            
+            if (result.duplicationPercentage === 100) {
+                // 100% 중복 - 폴더 전체 삭제 가능
+                if (targetId) {
+                    optionsHtml = `
+                        <div class="deletion-options">
+                            <button class="deletion-btn delete-folder" onclick="deleteTargetFolder('${targetId}')">
+                                <i class="fas fa-folder-minus"></i>
+                                대상 폴더 전체 삭제
+                                <div style="font-size: 0.8rem; margin-top: 4px;">
+                                    모든 파일이 기준 폴더에 있으므로 안전하게 삭제 가능
+                                </div>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    optionsHtml = `
+                        <div class="deletion-options">
+                            <div style="color: #dc2626; padding: 10px; background: #fef2f2; border-radius: 6px;">
+                                ⚠️ 대상 폴더 ID를 찾을 수 없어 삭제 버튼을 표시할 수 없습니다.
+                                <br>브라우저 개발자 도구(F12) → Console 탭에서 디버그 정보를 확인해주세요.
+                                <br><br>
+                                <button onclick="location.reload()" style="padding: 4px 8px; background: #dc2626; color: white; border: none; border-radius: 4px;">
+                                    페이지 새로고침 후 다시 시도
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else if (result.duplicateCount > 0) {
+                // 부분 중복 - 중복 파일만 삭제 가능
+                optionsHtml = `
+                    <div class="deletion-options">
+                        <button class="deletion-btn delete-files" onclick="deleteDuplicateFiles()">
+                            <i class="fas fa-files-medical"></i>
+                            중복 파일만 삭제 (${result.duplicateCount}개)
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label>
+                            <input type="checkbox" id="deleteEmptyFolders" checked>
+                            삭제 후 빈 폴더도 함께 정리
+                        </label>
+                    </div>
+                `;
+            } else {
+                optionsHtml = `
+                    <div style="text-align: center; color: #059669; font-weight: 600;">
+                        🎉 중복 파일이 없습니다!
+                    </div>
+                `;
+            }
+            
+            document.getElementById('deletionOptions').innerHTML = optionsHtml;
+        }
+
+        function displayDuplicateFilesList(duplicateFiles) {
+            if (!duplicateFiles || duplicateFiles.length === 0) return;
+            
+            const listHtml = `
+                <h4>📋 중복 파일 목록</h4>
+                <div class="file-list">
+                    ${duplicateFiles.map(file => `
+                        <div class="file-item-deletion" id="file-${file.id}">
+                            <div>
+                                <div style="font-weight: 500;">${file.name}</div>
+                                <div style="font-size: 0.875rem; color: #666;">
+                                    ${formatFileSize(file.size)} • ${new Date(file.modifiedTime).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div class="deletion-status" id="status-${file.id}">
+                                <i class="fas fa-clock" style="color: #6b7280;"></i>
+                                대기 중
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('duplicateFilesList').innerHTML = listHtml;
+        }
+
+        async function deleteTargetFolder(targetFolderId) {
+            if (!confirm('대상 폴더를 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+
+            showStep('deletionProgress');
+            
+            try {
+                const requestBody = {
+                    comparisonId: currentComparisonId,
+                    targetFolderId: targetFolderId,
+                    deleteEmptyFolders: true
+                };
+
+                const response = await fetchData('/api/compare/delete/target-folder', 'POST', requestBody);
+                
+                if (response && response.progress) {
+                    startDeletionProgressTracking(response.progress.id, 'folder');
+                } else {
+                    throw new Error('폴더 삭제 작업 시작에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('Target folder deletion error:', error);
+                alert('폴더 삭제 중 오류가 발생했습니다: ' + error.message);
+                showStep('comparisonResult');
+            }
+        }
+
+        async function deleteDuplicateFiles() {
+            if (!confirm('중복 파일들을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+
+            // Get file IDs from the displayed list
+            const fileElements = document.querySelectorAll('.file-item-deletion');
+            const fileIds = Array.from(fileElements).map(el => el.id.replace('file-', ''));
+            
+            if (fileIds.length === 0) {
+                alert('삭제할 파일이 없습니다.');
+                return;
+            }
+
+            showStep('deletionProgress');
+            
+            try {
+                const requestBody = {
+                    comparisonId: currentComparisonId,
+                    fileIds: fileIds,
+                    deleteEmptyFolders: document.getElementById('deleteEmptyFolders')?.checked || false
+                };
+
+                const response = await fetchData('/api/compare/delete/duplicate-files', 'POST', requestBody);
+                
+                if (response && response.progress) {
+                    startDeletionProgressTracking(response.progress.id, 'files');
+                } else {
+                    throw new Error('파일 삭제 작업 시작에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('Duplicate files deletion error:', error);
+                alert('파일 삭제 중 오류가 발생했습니다: ' + error.message);
+                showStep('comparisonResult');
+            }
+        }
+
+        function startDeletionProgressTracking(progressId, type) {
+            deletionProgressInterval = setInterval(async () => {
+                try {
+                    const progress = await fetchData(`/api/compare/progress?id=${progressId}`);
+                    
+                    if (progress) {
+                        console.log('Deletion progress:', progress); // 디버그 로그
+                        
+                        // 다양한 필드명 시도 (totalItems/processedItems 또는 total/completed)
+                        const total = progress.totalItems || progress.total || 0;
+                        const processed = progress.processedItems || progress.completed || 0;
+                        const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
+                        
+                        document.getElementById('deletionProgressBar').style.width = percentage + '%';
+                        document.getElementById('deletionProgressText').textContent = 
+                            `${progress.currentStep || '삭제 진행 중...'} (${percentage}%)`;
+
+                        if (progress.status === 'completed') {
+                            clearInterval(deletionProgressInterval);
+                            showDeletionComplete(type);
+                        } else if (progress.status === 'failed') {
+                            clearInterval(deletionProgressInterval);
+                            alert('삭제 작업에 실패했습니다: ' + (progress.errorMessage || '알 수 없는 오류'));
+                            showStep('comparisonResult');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Deletion progress tracking error:', error);
+                }
+            }, 1000);
+        }
+
+        function showDeletionComplete(type) {
+            const message = type === 'folder' 
+                ? '✅ 대상 폴더가 성공적으로 삭제되었습니다!' 
+                : '✅ 중복 파일들이 성공적으로 삭제되었습니다!';
+                
+            document.getElementById('deletionStatus').innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #059669; font-size: 1.2rem; font-weight: 600;">
+                    ${message}
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="action-btn" onclick="closeFolderComparisonModal()">
+                        <i class="fas fa-check"></i> 완료
+                    </button>
+                </div>
+            `;
+        }
+
+        function cleanupFiles() {
+            alert('정리 작업 기능은 곧 추가됩니다!');
+        }
+
+        function showStats() {
+            alert('통계 페이지는 곧 추가됩니다!');
+        }
+
+        async function quickDelete(groupId) {
+            if (!confirm('이 중복 그룹의 파일들을 삭제하시겠습니까?')) return;
+            
+            try {
+                await fetch(`${API_BASE}/api/duplicates/group/${groupId}/quick-clean`, { method: 'DELETE' });
+                alert('파일이 삭제되었습니다!');
+                updateRecentDuplicates();
+                updateStatusCards();
+            } catch (error) {
+                alert('삭제 실패: ' + error.message);
+            }
+        }
+
+        let currentGroupId = null;
+
+        async function viewGroup(groupId) {
+            try {
+                const response = await fetchData(`/api/duplicates/group?id=${groupId}`);
+                if (response) {
+                    currentGroupId = groupId;
+                    displayGroupDetailsModal(response);
+                }
+            } catch (error) {
+                console.error('그룹 상세 정보 조회 실패:', error);
+                alert('그룹 상세 정보를 불러올 수 없습니다: ' + error.message);
+            }
+        }
+
+        function displayGroupDetailsModal(group) {
+            const modal = document.getElementById('group-details-modal');
+            const content = document.getElementById('group-details-content');
+            
+            // 그룹 요약 정보 생성
+            const wastedSpace = group.files && group.files.length > 0 ? 
+                (group.count - 1) * group.files[0].size : 0;
+            
+            const totalSize = group.totalSize || (group.files && group.files.length > 0 ? 
+                group.files[0].size * group.count : 0);
+            
+            let html = `
+                <div class="group-info">
+                    <div class="group-summary">
+                        <div class="group-summary-grid">
+                            <div class="summary-item">
+                                <div class="summary-value">${group.count || 0}</div>
+                                <div class="summary-label">중복 파일 수</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-value">${formatFileSize(totalSize)}</div>
+                                <div class="summary-label">총 크기</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-value" style="color: #ef4444;">${formatFileSize(wastedSpace)}</div>
+                                <div class="summary-label">절약 가능 용량</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-value" style="font-size: 0.9rem; font-family: monospace;">${group.hash ? group.hash.substring(0, 16) + '...' : 'N/A'}</div>
+                                <div class="summary-label">파일 해시</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="files-list">
+                    <h3 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 16px;">
+                        <i class="fas fa-list"></i> 중복 파일 목록 (${group.files ? group.files.length : 0}개)
+                    </h3>
+            `;
+            
+            if (group.files && group.files.length > 0) {
+                group.files.forEach((file, index) => {
+                    const fileTypeIcon = getFileTypeIcon(file.mimeType || 'application/octet-stream');
+                    const modifiedDate = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString('ko-KR') : '날짜 정보 없음';
+                    
+                    html += `
+                        <div class="file-item-modal" id="file-item-${file.id}">
+                            <div class="file-info-modal">
+                                <div class="file-name-modal">
+                                    <span class="file-type-icon">${fileTypeIcon}</span>
+                                    <span class="file-name-text" title="${file.name || '알 수 없는 파일'}">${file.name || '알 수 없는 파일'}</span>
+                                </div>
+                                <div class="file-details-modal" id="file-details-${file.id}">
+                                    <span><i class="fas fa-calendar"></i> ${modifiedDate}</span>
+                                    <span><i class="fas fa-tag"></i> ${file.mimeType || 'application/octet-stream'}</span>
+                                    ${file.path ? `<span><i class="fas fa-folder"></i> ${file.path}</span>` : ''}
+                                </div>
+                                <div class="file-path-display" id="file-path-${file.id}" style="display: none; margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.8rem; color: #495057; word-break: break-all;">
+                                    <!-- 경로 정보가 여기에 표시됩니다 -->
+                                </div>
+                            </div>
+                            <div class="file-actions-modal">
+                                <div class="file-size-modal">${formatFileSize(file.size || 0)}</div>
+                                <button class="btn-sm btn-secondary-sm" onclick="toggleFilePath('${file.id}')" title="경로 보기/숨기기" id="path-btn-${file.id}">
+                                    <i class="fas fa-map-marker-alt"></i> 경로
+                                </button>
+                                ${file.webViewLink ? `<a href="${file.webViewLink}" target="_blank" class="btn-sm btn-primary" title="Google Drive에서 열기"><i class="fas fa-external-link-alt"></i></a>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                html += '<p style="text-align: center; color: #6b7280; padding: 20px;">파일 정보를 불러올 수 없습니다.</p>';
+            }
+            
+            html += '</div>';
+            
+            content.innerHTML = html;
+            modal.classList.remove('hidden');
+        }
+
+        function getFileTypeIcon(mimeType) {
+            if (mimeType.startsWith('image/')) return '🖼️';
+            if (mimeType.startsWith('video/')) return '🎥';
+            if (mimeType.startsWith('audio/')) return '🎵';
+            if (mimeType.includes('pdf')) return '📄';
+            if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('compressed')) return '📦';
+            if (mimeType.includes('document') || mimeType.includes('word')) return '📝';
+            if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return '📊';
+            if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📽️';
+            return '📄';
+        }
+
+        function closeGroupDetailsModal() {
+            const modal = document.getElementById('group-details-modal');
+            modal.classList.add('hidden');
+            currentGroupId = null;
+        }
+
+        async function deleteCurrentGroup() {
+            if (!currentGroupId) return;
+            
+            if (!confirm(`이 중복 그룹(ID: ${currentGroupId})을 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/duplicates/group/delete?id=${currentGroupId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('중복 그룹이 삭제되었습니다.');
+                    closeGroupDetailsModal();
+                    location.reload(); // 페이지 새로고침
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                alert('그룹 삭제 실패: ' + error.message);
+            }
+        }
+
+        async function toggleFilePath(fileId) {
+            const pathDisplay = document.getElementById(`file-path-${fileId}`);
+            const pathButton = document.getElementById(`path-btn-${fileId}`);
+            
+            if (pathDisplay.style.display === 'none' || pathDisplay.style.display === '') {
+                // 경로가 숨겨져 있는 경우 - 로드하고 표시
+                try {
+                    pathButton.disabled = true;
+                    pathButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 로딩중';
+                    
+                    const response = await fetchData(`/api/duplicates/file/path?fileId=${fileId}`);
+                    if (response) {
+                        const pathInfo = `
+                            <div style="margin-bottom: 8px;"><strong><i class="fas fa-folder-open"></i> 전체 경로:</strong></div>
+                            <div style="background: #ffffff; padding: 6px 8px; border-radius: 3px; border-left: 3px solid #007bff; font-family: monospace; font-size: 0.9rem;">
+                                ${response.path || '경로 정보 없음'}
+                            </div>
+                            ${response.parentId ? `<div style="margin-top: 6px; font-size: 0.75rem; color: #6c757d;"><i class="fas fa-info-circle"></i> 부모 폴더 ID: ${response.parentId}</div>` : ''}
+                        `;
+                        
+                        pathDisplay.innerHTML = pathInfo;
+                        pathDisplay.style.display = 'block';
+                        pathButton.innerHTML = '<i class="fas fa-eye-slash"></i> 숨기기';
+                        pathButton.title = '경로 숨기기';
+                    } else {
+                        pathDisplay.innerHTML = '<div style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> 파일 경로 정보를 가져올 수 없습니다.</div>';
+                        pathDisplay.style.display = 'block';
+                        pathButton.innerHTML = '<i class="fas fa-eye-slash"></i> 숨기기';
+                        pathButton.title = '경로 숨기기';
+                    }
+                } catch (error) {
+                    console.error('파일 경로 조회 실패:', error);
+                    pathDisplay.innerHTML = `<div style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> 경로 조회 실패: ${error.message}</div>`;
+                    pathDisplay.style.display = 'block';
+                    pathButton.innerHTML = '<i class="fas fa-eye-slash"></i> 숨기기';
+                    pathButton.title = '경로 숨기기';
+                } finally {
+                    pathButton.disabled = false;
+                }
+            } else {
+                // 경로가 표시되어 있는 경우 - 숨기기
+                pathDisplay.style.display = 'none';
+                pathButton.innerHTML = '<i class="fas fa-map-marker-alt"></i> 경로';
+                pathButton.title = '경로 보기';
+            }
+        }
+
+        // 초기화 및 주기적 업데이트
+        async function init() {
+            console.log('🚀 대시보드 초기화 시작');
+            
+            await updateStatusCards();
+            await updateProgress();
+            await updateRecentDuplicates();
+            
+            // 5초마다 진행 상황 업데이트
+            setInterval(updateProgress, 5000);
+            
+            // 30초마다 상태 카드 업데이트
+            setInterval(updateStatusCards, 30000);
+            
+            console.log('✅ 대시보드 초기화 완료');
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const groupModal = document.getElementById('group-details-modal');
+                if (groupModal && !groupModal.classList.contains('hidden')) {
+                    closeGroupDetailsModal();
+                    return;
+                }
+                
+                const folderModal = document.getElementById('folderComparisonModal');
+                if (folderModal && folderModal.style.display !== 'none') {
+                    closeFolderComparisonModal();
+                    return;
+                }
+            }
+        });
+
+        // 단일 폴더 중복 검색 관련 변수들
+        let singleFolderProgressInterval;
+        let currentSingleFolderProgressId = null;
+        
+        // 단일 폴더 중복 검색 모달 관리 함수들
+        function findSingleFolderDuplicates() {
+            document.getElementById('singleFolderDuplicateModal').classList.remove('hidden');
+            resetSingleFolderDuplicateModal();
+        }
+
+        function closeSingleFolderDuplicateModal() {
+            document.getElementById('singleFolderDuplicateModal').classList.add('hidden');
+            if (singleFolderProgressInterval) {
+                clearInterval(singleFolderProgressInterval);
+                singleFolderProgressInterval = null;
+            }
+            currentSingleFolderProgressId = null;
+        }
+
+        function resetSingleFolderDuplicateModal() {
+            // 모든 단계 숨기기
+            document.getElementById('singleFolderInput').style.display = 'block';
+            document.getElementById('singleFolderProgress').style.display = 'none';
+            document.getElementById('singleFolderResult').style.display = 'none';
+            document.getElementById('singleFolderDeletionProgress').style.display = 'none';
+            
+            // 입력 필드 초기화
+            document.getElementById('singleFolderUrl').value = '';
+            document.getElementById('includeSubfoldersOption').checked = true;
+            document.getElementById('minFileSizeOption').value = '1';
+            document.getElementById('forceNewScanOption').checked = false;
+            
+            // 진행 상황 초기화
+            document.getElementById('singleFolderProgressBar').style.width = '0%';
+            document.getElementById('singleFolderProgressText').textContent = '검색 작업 준비 중...';
+            document.getElementById('singleFolderProcessedCount').textContent = '0';
+            document.getElementById('singleFolderTotalCount').textContent = '0';
+            
+            // 로그 초기화
+            const logContainer = document.getElementById('singleFolderProgressLog');
+            logContainer.innerHTML = '<div class="log-entry">중복 검색을 시작합니다...</div>';
+        }
+
+        // 단일 폴더 중복 검색 시작
+        async function startSingleFolderDuplicateSearch() {
+            const folderUrl = document.getElementById('singleFolderUrl').value.trim();
+            
+            if (!folderUrl) {
+                alert('폴더 URL을 입력해주세요.');
+                return;
+            }
+            
+            try {
+                // 폴더 ID 추출
+                addSingleFolderLogEntry('📂 폴더 URL에서 폴더 ID 추출 중...', 'info');
+                const extractResponse = await fetch(`${API_BASE}/api/utils/extract-folder-id`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: folderUrl })
+                });
+                
+                if (!extractResponse.ok) {
+                    throw new Error('폴더 ID 추출에 실패했습니다.');
+                }
+                
+                const extractData = await extractResponse.json();
+                const folderId = extractData.folderId;
+                
+                addSingleFolderLogEntry(`✅ 폴더 ID 추출 완료: ${folderId}`, 'success');
+                
+                // 중복 검색 시작
+                addSingleFolderLogEntry('🔍 중복 파일 검색을 시작합니다...', 'info');
+                
+                const requestData = {
+                    folderId: folderId,
+                    includeSubfolders: document.getElementById('includeSubfoldersOption').checked,
+                    minFileSize: parseInt(parseFloat(document.getElementById('minFileSizeOption').value) * 1024 * 1024), // MB to bytes
+                    forceNewScan: document.getElementById('forceNewScanOption').checked
+                };
+                
+                console.log('단일 폴더 중복 검색 요청 데이터:', requestData);
+                
+                const response = await fetch(`${API_BASE}/api/compare/single-folder/duplicates`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('단일 폴더 중복 검색 API 응답:', data);
+                
+                currentSingleFolderProgressId = data.progressId || data.progress?.ID;
+                
+                // 진행 상황 표시로 전환
+                showSingleFolderProgressStep();
+                
+                // 진행 상황 모니터링 시작
+                startSingleFolderProgressTracking();
+                
+                addSingleFolderLogEntry('⏳ 중복 검색 작업이 백그라운드에서 진행됩니다...', 'info');
+                
+            } catch (error) {
+                console.error('단일 폴더 중복 검색 오류:', error);
+                addSingleFolderLogEntry('❌ 중복 검색 중 오류가 발생했습니다: ' + error.message, 'error');
+                alert('중복 검색 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        function showSingleFolderProgressStep() {
+            document.getElementById('singleFolderInput').style.display = 'none';
+            document.getElementById('singleFolderProgress').style.display = 'block';
+            document.getElementById('singleFolderResult').style.display = 'none';
+            document.getElementById('singleFolderDeletionProgress').style.display = 'none';
+        }
+
+        function startSingleFolderProgressTracking() {
+            if (singleFolderProgressInterval) {
+                clearInterval(singleFolderProgressInterval);
+            }
+            
+            // Validate progressId before starting
+            if (!currentSingleFolderProgressId) {
+                console.error('진행 상황 추적 오류: progressId가 없습니다');
+                addSingleFolderLogEntry('❌ 진행 상황 추적을 시작할 수 없습니다: progressId가 없습니다', 'error');
+                return;
+            }
+            
+            singleFolderProgressInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/compare/single-folder/progress?progressId=${currentSingleFolderProgressId}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const progress = await response.json();
+                    console.log('단일 폴더 중복 검색 진행 상황:', progress);
+                    
+                    updateSingleFolderProgress(progress);
+                    
+                    if (progress.status === 'completed' || progress.status === 'failed') {
+                        clearInterval(singleFolderProgressInterval);
+                        singleFolderProgressInterval = null;
+                        
+                        if (progress.status === 'completed') {
+                            addSingleFolderLogEntry('✅ 중복 검색이 완료되었습니다!', 'success');
+                            loadSingleFolderSearchResults();
+                        } else {
+                            addSingleFolderLogEntry('❌ 중복 검색에 실패했습니다: ' + (progress.errorMessage || '알 수 없는 오류'), 'error');
+                            alert('중복 검색에 실패했습니다: ' + (progress.errorMessage || '알 수 없는 오류'));
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('진행 상황 조회 오류:', error);
+                }
+            }, 1000);
+        }
+
+        function updateSingleFolderProgress(progress) {
+            const percentage = progress.totalItems > 0 ? (progress.processedItems / progress.totalItems * 100) : 0;
+            
+            document.getElementById('singleFolderProgressBar').style.width = percentage + '%';
+            document.getElementById('singleFolderProgressText').textContent = progress.currentStep || '작업 진행 중...';
+            document.getElementById('singleFolderProcessedCount').textContent = progress.processedItems || 0;
+            document.getElementById('singleFolderTotalCount').textContent = progress.totalItems || 0;
+        }
+
+        async function loadSingleFolderSearchResults() {
+            try {
+                // 진행 상황에서 결과 정보를 가져오기 위해 다시 API 호출
+                const response = await fetch(`${API_BASE}/api/compare/single-folder/progress?progressId=${currentSingleFolderProgressId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const progress = await response.json();
+                
+                if (progress.result && progress.result.duplicateGroups) {
+                    displaySingleFolderSearchResults(progress.result);
+                } else {
+                    addSingleFolderLogEntry('ℹ️ 중복 파일이 발견되지 않았습니다.', 'info');
+                    document.getElementById('singleFolderSummary').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>검색 완료</strong><br>
+                            선택한 폴더에서 중복 파일이 발견되지 않았습니다.
+                        </div>
+                    `;
+                    showSingleFolderResultStep();
+                }
+                
+            } catch (error) {
+                console.error('검색 결과 로딩 오류:', error);
+                addSingleFolderLogEntry('❌ 검색 결과를 불러오는데 실패했습니다: ' + error.message, 'error');
+            }
+        }
+
+        function displaySingleFolderSearchResults(result) {
+            const duplicateGroups = result.duplicateGroups || [];
+            const totalDuplicates = duplicateGroups.reduce((sum, group) => sum + group.files.length, 0);
+            const totalSize = duplicateGroups.reduce((sum, group) => sum + (group.size * group.files.length), 0);
+            
+            // 요약 정보 표시
+            document.getElementById('singleFolderSummary').innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>중복 파일 검색 완료</strong><br>
+                    ${duplicateGroups.length}개의 중복 그룹에서 총 ${totalDuplicates}개의 중복 파일을 발견했습니다.<br>
+                    예상 절약 공간: ${formatFileSize(totalSize - duplicateGroups.reduce((sum, group) => sum + group.size, 0))}
+                </div>
+            `;
+            
+            // 중복 파일 목록 표시
+            displaySingleFolderDuplicatesList(duplicateGroups);
+            
+            // 결과 단계로 전환
+            showSingleFolderResultStep();
+        }
+
+        function displaySingleFolderDuplicatesList(duplicateGroups) {
+            const container = document.getElementById('singleFolderDuplicatesList');
+            
+            if (duplicateGroups.length === 0) {
+                container.innerHTML = '<div class="no-results">중복 파일이 없습니다.</div>';
+                return;
+            }
+            
+            let html = '<div class="duplicate-groups">';
+            
+            duplicateGroups.forEach((group, groupIndex) => {
+                html += `
+                    <div class="duplicate-group">
+                        <div class="group-header">
+                            <h4>
+                                <i class="fas fa-layer-group"></i>
+                                중복 그룹 ${groupIndex + 1}
+                                <span class="group-info">(${group.files.length}개 파일, ${formatFileSize(group.size)} 각각)</span>
+                            </h4>
+                            <label class="select-all-label">
+                                <input type="checkbox" class="group-select-all" onchange="toggleGroupSelection(${groupIndex}, this.checked)">
+                                모두 선택
+                            </label>
+                        </div>
+                        <div class="files-list">
+                `;
+                
+                // 파일을 생성일 기준으로 정렬 (가장 오래된 것이 원본으로 추천)
+                const sortedFiles = [...group.files].sort((a, b) => {
+                    const aTime = new Date(a.createdTime || a.modifiedTime || 0);
+                    const bTime = new Date(b.createdTime || b.modifiedTime || 0);
+                    return aTime - bTime;
+                });
+                
+                sortedFiles.forEach((file, fileIndex) => {
+                    const isOriginal = fileIndex === 0; // 가장 오래된 파일을 원본으로 간주
+                    const createdDate = file.createdTime ? new Date(file.createdTime).toLocaleDateString('ko-KR') : '날짜 정보 없음';
+                    const modifiedDate = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString('ko-KR') : '날짜 정보 없음';
+                    
+                    html += `
+                        <div class="file-item ${isOriginal ? 'original-file' : ''}" data-group="${groupIndex}" data-file="${fileIndex}">
+                            <label class="file-checkbox-label">
+                                <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" 
+                                       ${isOriginal ? 'disabled title="원본으로 추천되는 파일은 선택할 수 없습니다"' : ''}>
+                                <div class="file-info">
+                                    <div class="file-name">
+                                        ${isOriginal ? '<span class="original-badge">원본 추천</span>' : ''}
+                                        ${file.name}
+                                    </div>
+                                    <div class="file-meta">
+                                        <span><i class="fas fa-calendar-plus"></i> 생성일: ${createdDate}</span>
+                                        <span><i class="fas fa-calendar-alt"></i> 수정일: ${modifiedDate}</span>
+                                        <span><i class="fas fa-hdd"></i> ${formatFileSize(file.size)}</span>
+                                        ${file.path ? `<span><i class="fas fa-folder"></i> ${file.path}</span>` : ''}
+                                    </div>
+                                </div>
+                            </label>
+                            <div class="file-actions">
+                                <a href="${file.webViewLink}" target="_blank" class="btn btn-sm btn-info">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Drive에서 보기
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // 삭제 버튼 표시
+            document.getElementById('deleteSelectedBtn').style.display = 'inline-block';
+            
+            // 체크박스 상태 변경 이벤트 리스너 추가
+            updateDeleteButtonState();
+            container.querySelectorAll('.file-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', updateDeleteButtonState);
+            });
+        }
+
+        function toggleGroupSelection(groupIndex, checked) {
+            const groupElement = document.querySelector(`[data-group="${groupIndex}"]`).closest('.duplicate-group');
+            const checkboxes = groupElement.querySelectorAll('.file-checkbox:not(:disabled)');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = checked;
+            });
+            
+            updateDeleteButtonState();
+        }
+
+        function updateDeleteButtonState() {
+            const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            
+            if (selectedCheckboxes.length > 0) {
+                deleteBtn.style.display = 'inline-block';
+                deleteBtn.textContent = `선택한 파일 삭제 (${selectedCheckboxes.length}개)`;
+            } else {
+                deleteBtn.textContent = '선택한 파일 삭제';
+            }
+        }
+
+        function showSingleFolderResultStep() {
+            document.getElementById('singleFolderInput').style.display = 'none';
+            document.getElementById('singleFolderProgress').style.display = 'none';
+            document.getElementById('singleFolderResult').style.display = 'block';
+            document.getElementById('singleFolderDeletionProgress').style.display = 'none';
+        }
+
+        async function deleteSelectedSingleFolderDuplicates() {
+            const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                alert('삭제할 파일을 선택해주세요.');
+                return;
+            }
+            
+            if (!confirm(`선택한 ${selectedCheckboxes.length}개의 파일을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+            
+            const fileIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.fileId);
+            
+            try {
+                // 삭제 진행 상황으로 전환
+                showSingleFolderDeletionProgressStep();
+                
+                // 파일 삭제 API 호출
+                const response = await fetch(`${API_BASE}/api/cleanup/files`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ fileIds: fileIds })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('파일 삭제 결과:', result);
+                
+                // 삭제 결과 표시
+                document.getElementById('singleFolderDeletionProgressText').textContent = '파일 삭제 완료';
+                document.getElementById('singleFolderDeletionProgressBar').style.width = '100%';
+                
+                let statusHtml = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>파일 삭제 완료</strong><br>
+                        성공: ${result.successCount || 0}개<br>
+                        실패: ${result.failedCount || 0}개
+                `;
+                
+                if (result.failedFiles && result.failedFiles.length > 0) {
+                    statusHtml += '<br><br><strong>삭제 실패 파일:</strong><ul>';
+                    result.failedFiles.forEach(file => {
+                        statusHtml += `<li>${file.name}: ${file.error}</li>`;
+                    });
+                    statusHtml += '</ul>';
+                }
+                
+                statusHtml += '</div>';
+                
+                document.getElementById('singleFolderDeletionStatus').innerHTML = statusHtml;
+                
+                // 성공한 경우 결과 화면으로 돌아가서 새로고침
+                setTimeout(() => {
+                    if (result.successCount > 0) {
+                        loadSingleFolderSearchResults(); // 결과 새로고침
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('파일 삭제 오류:', error);
+                document.getElementById('singleFolderDeletionStatus').innerHTML = `
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>삭제 실패</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function showSingleFolderDeletionProgressStep() {
+            document.getElementById('singleFolderInput').style.display = 'none';
+            document.getElementById('singleFolderProgress').style.display = 'none';
+            document.getElementById('singleFolderResult').style.display = 'none';
+            document.getElementById('singleFolderDeletionProgress').style.display = 'block';
+            
+            // 진행 상황 초기화
+            document.getElementById('singleFolderDeletionProgressBar').style.width = '0%';
+            document.getElementById('singleFolderDeletionProgressText').textContent = '파일 삭제 시작 중...';
+            document.getElementById('singleFolderDeletionStatus').innerHTML = '';
+        }
+
+        function addSingleFolderLogEntry(message, type = 'info') {
+            const logContainer = document.getElementById('singleFolderProgressLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 키보드 이벤트에 단일 폴더 모달 닫기 추가
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const singleFolderModal = document.getElementById('singleFolderDuplicateModal');
+                if (singleFolderModal && !singleFolderModal.classList.contains('hidden')) {
+                    closeSingleFolderDuplicateModal();
+                    return;
+                }
+            }
+        });
+    </script>
+
+    <!-- Group Details Modal -->
+    <div id="group-details-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeGroupDetailsModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-copy"></i> 중복 그룹 상세 정보</h2>
+                <button class="modal-close" onclick="closeGroupDetailsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="group-details-content">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeGroupDetailsModal()">닫기</button>
+                <button class="btn btn-danger" id="delete-group-btn" onclick="deleteCurrentGroup()">그룹 삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* 모달 스타일 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+            max-height: 85vh;
+            width: 800px;
+            overflow: hidden;
+            animation: modalFadeIn 0.2s ease-out;
+            z-index: 1001;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .modal-body {
+            padding: 24px;
+            max-height: calc(85vh - 140px);
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        /* 그룹 상세 정보 스타일 */
+        .group-summary {
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .group-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .summary-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .file-item-modal {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: white;
+            transition: all 0.2s ease;
+        }
+
+        .file-item-modal:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-color: #d1d5db;
+        }
+
+        .file-info-modal {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name-modal {
+            font-weight: 500;
+            color: #1f2937;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-name-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-details-modal {
+            font-size: 0.875rem;
+            color: #6b7280;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .file-actions-modal {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .file-size-modal {
+            font-weight: 600;
+            color: #374151;
+            margin-right: 12px;
+            font-size: 0.875rem;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-sm.btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-sm.btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-sm.btn-secondary-sm {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-sm.btn-secondary-sm:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95vw;
+                max-height: 90vh;
+            }
+            
+            .group-summary-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .file-item-modal {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+        }
+        
+        /* 폴더 비교 모달 스타일 */
+        .comparison-step {
+            padding: 20px 0;
+        }
+        
+        .form-input {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .comparison-summary {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .deletion-options {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .deletion-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .deletion-btn.delete-folder {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .deletion-btn.delete-files {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .deletion-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .deletion-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .file-item-deletion {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s ease;
+        }
+        
+        .file-item-deletion:last-child {
+            border-bottom: none;
+        }
+        
+        .file-item-deletion.deleting {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .file-item-deletion.deleted {
+            background-color: #d1fae5;
+            color: #065f46;
+            text-decoration: line-through;
+        }
+        
+        .file-item-deletion.failed {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .deletion-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+        }
+        
+        /* 진행 상황 세부 정보 스타일 */
+        .progress-details {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+        
+        .detail-item:hover {
+            border-color: #3b82f6;
+            transform: translateY(-1px);
+        }
+        
+        .detail-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .detail-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1f2937;
+            text-align: right;
+        }
+        
+        /* 로그 컨테이너 스타일 */
+        .log-container {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            color: #d1d5db;
+            margin-bottom: 4px;
+            animation: logFadeIn 0.3s ease-in;
+        }
+        
+        .log-entry:last-child {
+            margin-bottom: 0;
+        }
+        
+        .log-entry.success {
+            color: #10b981;
+        }
+        
+        .log-entry.warning {
+            color: #f59e0b;
+        }
+        
+        .log-entry.error {
+            color: #ef4444;
+        }
+        
+        .log-entry.info {
+            color: #3b82f6;
+        }
+        
+        @keyframes logFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* 스크롤바 스타일 */
+        .log-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .log-container::-webkit-scrollbar-track {
+            background: #374151;
+            border-radius: 3px;
+        }
+        
+        .log-container::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 3px;
+        }
+        
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        
+        /* 단일 폴더 중복 검색 스타일 */
+        .duplicate-groups {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .duplicate-group {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .group-header {
+            background: #f8f9fa;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .group-header h4 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .group-info {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .select-all-label {
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+            color: #666;
+            cursor: pointer;
+        }
+        
+        .select-all-label input {
+            margin-right: 8px;
+        }
+        
+        .files-list {
+            background: white;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        
+        .file-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-item.original-file {
+            background-color: #f0f8f0;
+            border-left: 4px solid #28a745;
+        }
+        
+        .file-checkbox-label {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            cursor: pointer;
+        }
+        
+        .file-checkbox-label input[type="checkbox"] {
+            margin-right: 15px;
+            cursor: pointer;
+        }
+        
+        .file-checkbox-label input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .original-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            margin-right: 10px;
+        }
+        
+        .file-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .file-meta span {
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-meta i {
+            margin-right: 5px;
+        }
+        
+        .file-actions {
+            margin-left: 15px;
+        }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+        
+        .options-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-group input {
+            margin-right: 8px;
+        }
+        
+        .checkbox-group label {
+            cursor: pointer;
+        }
+        
+        /* 알림 스타일 */
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .alert-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+
+    <!-- 폴더 비교 모달 -->
+    <div id="folderComparisonModal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="closeFolderComparisonModal()"></div>
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2><i class="fas fa-folder-open"></i> 폴더 비교 및 삭제</h2>
+                <button class="close-btn" onclick="closeFolderComparisonModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- 단계 1: 폴더 입력 -->
+                <div id="folderInputStep" class="comparison-step">
+                    <h3>📁 비교할 폴더 설정</h3>
+                    
+                    <!-- 중단된 작업 재개 섹션 -->
+                    <div id="pendingComparisons" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                        <h4 style="margin: 0 0 10px 0; color: #495057;">🔄 중단된 작업이 있습니다</h4>
+                        <div id="pendingComparisonsList"></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label for="sourceFolderUrl"><strong>기준 폴더 URL:</strong></label>
+                        <input type="text" id="sourceFolderUrl" class="form-input" 
+                               placeholder="https://drive.google.com/drive/folders/... 또는 폴더 ID"
+                               style="width: 100%; margin-top: 5px;">
+                        <small style="color: #666;">기준이 되는 폴더 (이 폴더의 파일들과 비교됩니다)</small>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label for="targetFolderUrl"><strong>대상 폴더 URL:</strong></label>
+                        <input type="text" id="targetFolderUrl" class="form-input" 
+                               placeholder="https://drive.google.com/drive/folders/... 또는 폴더 ID"
+                               style="width: 100%; margin-top: 5px;">
+                        <small style="color: #666;">삭제 검토 대상이 되는 폴더</small>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <label>
+                                <input type="checkbox" id="includeSubfolders" checked>
+                                하위 폴더 포함
+                            </label>
+                            <label>
+                                <input type="checkbox" id="deepComparison" checked>
+                                정확한 비교 (해시 기반)
+                            </label>
+                            <label>
+                                <input type="checkbox" id="forceNewComparison">
+                                기존 결과 무시하고 새로 비교
+                            </label>
+                        </div>
+                    </div>
+                    <div style="text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="secondary-btn" onclick="checkPendingComparisons()">
+                            <i class="fas fa-search"></i> 중단된 작업 확인
+                        </button>
+                        <button class="action-btn" onclick="startFolderComparison()">
+                            <i class="fas fa-play"></i> 비교 시작
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 단계 2: 진행 상황 -->
+                <div id="comparisonProgress" class="comparison-step" style="display: none;">
+                    <h3>⏳ 폴더 비교 중...</h3>
+                    
+                    <!-- 전체 진행률 -->
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="comparisonProgressBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div id="comparisonProgressText" class="progress-text">비교 작업 준비 중...</div>
+                    </div>
+                    
+                    <!-- 상세 진행 정보 -->
+                    <div id="comparisonDetails" class="progress-details" style="margin-top: 20px;">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">📂 기준 폴더:</span>
+                                <span id="sourceProgress" class="detail-value">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📁 대상 폴더:</span>
+                                <span id="targetProgress" class="detail-value">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">🔍 현재 작업:</span>
+                                <span id="currentTask" class="detail-value">시작 중...</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📊 처리된 파일:</span>
+                                <span id="processedFiles" class="detail-value">0개</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">⏱️ 경과 시간:</span>
+                                <span id="elapsedTime" class="detail-value">0초</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">🔐 해시 계산:</span>
+                                <span id="hashProgress" class="detail-value">대기 중</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 실시간 로그 -->
+                    <div class="progress-log" style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: #666;">📝 실시간 로그:</h4>
+                        <div id="progressLog" class="log-container">
+                            <div class="log-entry">비교 작업을 시작합니다...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 단계 3: 결과 및 삭제 옵션 -->
+                <div id="comparisonResult" class="comparison-step" style="display: none;">
+                    <div id="comparisonSummary"></div>
+                    <div id="deletionOptions" style="margin-top: 20px;"></div>
+                    <div id="duplicateFilesList" style="margin-top: 20px;"></div>
+                </div>
+
+                <!-- 단계 4: 삭제 진행 상황 -->
+                <div id="deletionProgress" class="comparison-step" style="display: none;">
+                    <h3>🗑️ 파일 삭제 중...</h3>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="deletionProgressBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div id="deletionProgressText" class="progress-text">삭제 작업 준비 중...</div>
+                    </div>
+                    <div id="deletionStatus" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 단일 폴더 중복 검색 모달 -->
+    <div id="singleFolderDuplicateModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-search"></i> 폴더 내 중복 파일 검색</h2>
+                <button class="modal-close" onclick="closeSingleFolderDuplicateModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- 단계 1: 폴더 입력 -->
+                <div id="singleFolderInput" class="comparison-step">
+                    <div class="input-group">
+                        <label for="singleFolderUrl">
+                            <i class="fas fa-folder"></i>
+                            검색할 폴더 URL
+                        </label>
+                        <input type="text" id="singleFolderUrl" placeholder="https://drive.google.com/drive/folders/폴더ID">
+                        <small style="color: #666;">Google Drive 폴더 URL을 입력하세요</small>
+                    </div>
+                    
+                    <div class="options-group" style="margin-top: 20px;">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeSubfoldersOption" checked>
+                            <label for="includeSubfoldersOption">하위 폴더도 포함하여 검색</label>
+                        </div>
+                        
+                        <div class="input-group" style="margin-top: 15px;">
+                            <label for="minFileSizeOption">최소 파일 크기 (MB)</label>
+                            <input type="number" id="minFileSizeOption" value="1" min="0" step="0.1">
+                            <small style="color: #666;">지정한 크기 이상의 파일만 검색합니다</small>
+                        </div>
+                        
+                        <div class="checkbox-group" style="margin-top: 15px;">
+                            <input type="checkbox" id="forceNewScanOption">
+                            <label for="forceNewScanOption">새로 스캔 (기존 결과 무시)</label>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="startSingleFolderDuplicateSearch()">
+                            <i class="fas fa-search"></i>
+                            중복 검색 시작
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeSingleFolderDuplicateModal()">취소</button>
+                    </div>
+                </div>
+
+                <!-- 단계 2: 검색 진행 상황 -->
+                <div id="singleFolderProgress" class="comparison-step" style="display: none;">
+                    <h3>🔍 중복 파일 검색 중...</h3>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="singleFolderProgressBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div id="singleFolderProgressText" class="progress-text">검색 작업 준비 중...</div>
+                    </div>
+                    
+                    <div class="progress-details">
+                        <div class="progress-item">
+                            <span class="progress-label">처리된 파일:</span>
+                            <span id="singleFolderProcessedCount">0</span> / <span id="singleFolderTotalCount">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button class="btn btn-secondary" onclick="closeSingleFolderDuplicateModal()">닫기</button>
+                    </div>
+                    
+                    <div class="log-section" style="margin-top: 20px;">
+                        <h4>📋 진행 로그</h4>
+                        <div id="singleFolderProgressLog" class="log-container">
+                            <div class="log-entry">중복 검색을 시작합니다...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 단계 3: 검색 결과 및 삭제 옵션 -->
+                <div id="singleFolderResult" class="comparison-step" style="display: none;">
+                    <div id="singleFolderSummary"></div>
+                    <div id="singleFolderDuplicatesList" style="margin-top: 20px;"></div>
+                    
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button class="btn btn-danger" onclick="deleteSelectedSingleFolderDuplicates()" style="display: none;" id="deleteSelectedBtn">
+                            <i class="fas fa-trash"></i>
+                            선택한 파일 삭제
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeSingleFolderDuplicateModal()">닫기</button>
+                    </div>
+                </div>
+
+                <!-- 단계 4: 삭제 진행 상황 -->
+                <div id="singleFolderDeletionProgress" class="comparison-step" style="display: none;">
+                    <h3>🗑️ 선택한 파일 삭제 중...</h3>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="singleFolderDeletionProgressBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div id="singleFolderDeletionProgressText" class="progress-text">삭제 작업 준비 중...</div>
+                    </div>
+                    <div id="singleFolderDeletionStatus" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

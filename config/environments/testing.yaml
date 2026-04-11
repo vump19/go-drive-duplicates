@@ -1,0 +1,54 @@
+# Testing Environment Configuration
+# Configuration optimized for automated testing
+
+server:
+  host: localhost
+  port: 0               # Random port for testing
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 30s
+  enable_tls: false
+
+database:
+  path: ":memory:"      # In-memory database for tests
+  max_open_conns: 5
+  max_idle_conns: 1
+  max_lifetime: 5m
+
+google_drive:
+  credentials_path: ""  # No real credentials in tests
+  api_key: "test_api_key"
+  scopes:
+    - https://www.googleapis.com/auth/drive.readonly
+  max_retries: 1        # Fast fail for tests
+  request_timeout: 5s
+
+hash:
+  algorithm: sha256
+  worker_count: 1       # Single worker for predictable tests
+  max_file_size: 1048576  # 1MB limit for test files
+  buffer_size: 1024
+
+processing:
+  batch_size: 10        # Small batches for testing
+  worker_count: 1
+  save_interval: 1s     # Frequent saves for test verification
+  max_retries: 1
+
+security:
+  enable_cors: false    # Disabled for testing
+  enable_rate_limit: false
+  rate_limit: 1000
+  allowed_origins:
+    - "*"
+
+logging:
+  level: warn           # Minimal logging during tests
+  format: text
+  output: stdout
+  max_size: 10
+  max_backups: 1
+  max_age: 1
+  compress: false
+
+environment: testing

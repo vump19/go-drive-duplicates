@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive Dual Panel Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin-page.css">
+    <link rel="stylesheet" href="css/explorer.css">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+</head>
+<body>
+    <!-- Main Navigation -->
+    <nav class="main-nav page-header">
+        <div class="nav-brand">
+            <i class="fas fa-folder-tree"></i>
+            <h1>Google Drive Explorer</h1>
+        </div>
+        <div class="nav-menu">
+            <div class="mode-toggle">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="dbModeToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label" id="modeLabel">
+                    <i class="fas fa-database"></i> DB 모드
+                </span>
+            </div>
+            <a href="index.html"><i class="fas fa-arrow-left"></i> 대시보드로 돌아가기</a>
+        </div>
+    </nav>
+
+    <!-- Help Panel -->
+    <div style="max-width: 1600px; margin: 0 auto; padding: 0 16px;">
+        <div class="help-panel">
+            <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+                <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="help-panel-body">
+                <p><strong>파일 탐색기</strong>는 Google Drive의 파일과 폴더를 듀얼 패널로 탐색하고 관리하는 도구입니다.</p>
+                <p><strong>사용 방법:</strong></p>
+                <ul>
+                    <li>왼쪽/오른쪽 패널에서 각각 다른 폴더를 탐색할 수 있습니다.</li>
+                    <li>파일을 선택한 후 상단 툴바의 버튼으로 복사, 이동, 삭제 작업을 수행합니다.</li>
+                    <li>폴더를 더블클릭하면 해당 폴더로 이동합니다.</li>
+                </ul>
+                <p><strong>주요 기능:</strong> 파일 복사/이동, 이름 변경, 새 폴더 생성, 폴더 크기 계산</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Scan Progress Section -->
+    <div class="scan-progress-section" id="scanProgressSection" style="display: none;">
+        <div class="scan-progress-container" id="scanProgressContainer">
+            <!-- Progress will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Explorer Container -->
+    <div class="explorer-container">
+        <!-- Left Panel -->
+        <div class="panel left-panel" id="leftPanel">
+            <!-- Panel Header -->
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Left Panel</span>
+                </div>
+                <div class="panel-controls">
+                    <button class="btn-icon" id="leftRefresh" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="btn-icon" id="leftHome" title="Go to Root">
+                        <i class="fas fa-home"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Breadcrumb Navigation -->
+            <div class="breadcrumb" id="leftBreadcrumb">
+                <span class="breadcrumb-item">
+                    <i class="fas fa-hard-drive"></i>
+                    My Drive
+                </span>
+            </div>
+
+            <!-- Panel Content: Folder Tree + File List -->
+            <div class="panel-content">
+                <!-- Folder Tree (Left Side) -->
+                <div class="folder-tree-container">
+                    <div class="folder-tree-header">
+                        <i class="fas fa-sitemap"></i>
+                        <span>Folders</span>
+                    </div>
+                    <div class="folder-tree" id="leftFolderTree">
+                        <!-- Folder tree will be loaded here -->
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Loading folders...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Folder Tree Resizer -->
+                <div class="tree-resizer" id="leftTreeResizer"></div>
+
+                <!-- File List (Right Side) -->
+                <div class="file-list-container">
+                    <!-- Toolbar -->
+                    <div class="file-list-toolbar">
+                        <div class="toolbar-section">
+                            <input type="checkbox" id="leftSelectAll" class="select-all-checkbox">
+                            <label for="leftSelectAll">Select All</label>
+                            <button class="btn-select-files" id="leftSelectFiles" title="Select only files (exclude folders)">
+                                <i class="fas fa-file"></i> Files Only
+                            </button>
+                            <span class="selected-count" id="leftSelectedCount">(0 selected)</span>
+                        </div>
+                        <div class="toolbar-section">
+                            <input type="text" id="leftSearch" class="search-input" placeholder="Search files...">
+                            <button class="btn-icon" id="leftSearchBtn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="toolbar-section">
+                            <select id="leftSortBy" class="sort-select">
+                                <option value="name">Name</option>
+                                <option value="modifiedTime">Modified</option>
+                                <option value="size">Size</option>
+                                <option value="mimeType">Type</option>
+                            </select>
+                            <select id="leftSortOrder" class="sort-select">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- File List Table -->
+                    <div class="file-list" id="leftFileList">
+                        <table class="file-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-checkbox"></th>
+                                    <th class="col-icon"></th>
+                                    <th class="col-name">Name</th>
+                                    <th class="col-size">Size</th>
+                                    <th class="col-modified">Modified</th>
+                                    <th class="col-type">Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leftFileListBody">
+                                <!-- File rows will be loaded here -->
+                                <tr class="loading-row">
+                                    <td colspan="6">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <span>Loading files...</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination" id="leftPagination">
+                        <button class="btn-page" id="leftPrevPage" disabled>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <span class="page-info" id="leftPageInfo">Page 1</span>
+                        <button class="btn-page" id="leftNextPage" disabled>
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Footer -->
+            <div class="panel-footer">
+                <div class="footer-info">
+                    <span id="leftItemCount">0 items</span>
+                    <span id="leftTotalSize">0 B</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Resizer -->
+        <div class="panel-resizer" id="leftResizer"></div>
+
+        <!-- Central Action Buttons -->
+        <div class="action-panel">
+            <div class="action-buttons">
+                <button class="btn-action" id="copyLeftToRight" title="Copy from Left to Right">
+                    <i class="fas fa-arrow-right"></i>
+                    <span>Copy</span>
+                </button>
+                <button class="btn-action" id="moveLeftToRight" title="Move from Left to Right">
+                    <i class="fas fa-arrow-right"></i>
+                    <span>Move</span>
+                </button>
+                <button class="btn-action btn-danger" id="deleteLeft" title="Delete selected from Left">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                </button>
+
+                <div class="action-divider"></div>
+
+                <button class="btn-action" id="copyRightToLeft" title="Copy from Right to Left">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Copy</span>
+                </button>
+                <button class="btn-action" id="moveRightToLeft" title="Move from Right to Left">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Move</span>
+                </button>
+                <button class="btn-action btn-danger" id="deleteRight" title="Delete selected from Right">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                </button>
+
+                <div class="action-divider"></div>
+
+                <button class="btn-action" id="createFolderLeft" title="Create folder in Left panel">
+                    <i class="fas fa-folder-plus"></i>
+                    <span>New Folder</span>
+                </button>
+                <button class="btn-action" id="createFolderRight" title="Create folder in Right panel">
+                    <i class="fas fa-folder-plus"></i>
+                    <span>New Folder</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Resizer -->
+        <div class="panel-resizer" id="rightResizer"></div>
+
+        <!-- Right Panel -->
+        <div class="panel right-panel" id="rightPanel">
+            <!-- Panel Header -->
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Right Panel</span>
+                </div>
+                <div class="panel-controls">
+                    <button class="btn-icon" id="rightRefresh" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="btn-icon" id="rightHome" title="Go to Root">
+                        <i class="fas fa-home"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Breadcrumb Navigation -->
+            <div class="breadcrumb" id="rightBreadcrumb">
+                <span class="breadcrumb-item">
+                    <i class="fas fa-hard-drive"></i>
+                    My Drive
+                </span>
+            </div>
+
+            <!-- Panel Content: Folder Tree + File List -->
+            <div class="panel-content">
+                <!-- Folder Tree (Left Side) -->
+                <div class="folder-tree-container">
+                    <div class="folder-tree-header">
+                        <i class="fas fa-sitemap"></i>
+                        <span>Folders</span>
+                    </div>
+                    <div class="folder-tree" id="rightFolderTree">
+                        <!-- Folder tree will be loaded here -->
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Loading folders...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Folder Tree Resizer -->
+                <div class="tree-resizer" id="rightTreeResizer"></div>
+
+                <!-- File List (Right Side) -->
+                <div class="file-list-container">
+                    <!-- Toolbar -->
+                    <div class="file-list-toolbar">
+                        <div class="toolbar-section">
+                            <input type="checkbox" id="rightSelectAll" class="select-all-checkbox">
+                            <label for="rightSelectAll">Select All</label>
+                            <button class="btn-select-files" id="rightSelectFiles" title="Select only files (exclude folders)">
+                                <i class="fas fa-file"></i> Files Only
+                            </button>
+                            <span class="selected-count" id="rightSelectedCount">(0 selected)</span>
+                        </div>
+                        <div class="toolbar-section">
+                            <input type="text" id="rightSearch" class="search-input" placeholder="Search files...">
+                            <button class="btn-icon" id="rightSearchBtn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="toolbar-section">
+                            <select id="rightSortBy" class="sort-select">
+                                <option value="name">Name</option>
+                                <option value="modifiedTime">Modified</option>
+                                <option value="size">Size</option>
+                                <option value="mimeType">Type</option>
+                            </select>
+                            <select id="rightSortOrder" class="sort-select">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- File List Table -->
+                    <div class="file-list" id="rightFileList">
+                        <table class="file-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-checkbox"></th>
+                                    <th class="col-icon"></th>
+                                    <th class="col-name">Name</th>
+                                    <th class="col-size">Size</th>
+                                    <th class="col-modified">Modified</th>
+                                    <th class="col-type">Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rightFileListBody">
+                                <!-- File rows will be loaded here -->
+                                <tr class="loading-row">
+                                    <td colspan="6">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <span>Loading files...</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination" id="rightPagination">
+                        <button class="btn-page" id="rightPrevPage" disabled>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <span class="page-info" id="rightPageInfo">Page 1</span>
+                        <button class="btn-page" id="rightNextPage" disabled>
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Footer -->
+            <div class="panel-footer">
+                <div class="footer-info">
+                    <span id="rightItemCount">0 items</span>
+                    <span id="rightTotalSize">0 B</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Status Bar -->
+    <div class="status-bar" id="statusBar">
+        <div class="status-message" id="statusMessage">
+            <i class="fas fa-info-circle"></i>
+            <span>Ready</span>
+        </div>
+        <div class="status-progress" id="statusProgress" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <span class="progress-text" id="progressText">0%</span>
+        </div>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Operation Progress Modal -->
+    <div class="modal" id="operationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Operation in Progress</h3>
+            </div>
+            <div class="modal-body">
+                <div class="operation-info">
+                    <div class="operation-type" id="operationType">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Processing...</span>
+                    </div>
+                    <div class="operation-stats">
+                        <div class="stat">
+                            <span class="stat-label">Files:</span>
+                            <span class="stat-value" id="operationFilesProgress">0 / 0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Size:</span>
+                            <span class="stat-value" id="operationSizeProgress">0 B / 0 B</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar large">
+                        <div class="progress-fill" id="operationProgressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-percentage" id="operationProgressPercentage">0%</div>
+                </div>
+                <div class="operation-details" id="operationDetails">
+                    <!-- Details will be added here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelOperation">Cancel</button>
+                <button class="btn btn-primary" id="closeOperationModal" style="display: none;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Folder Modal -->
+    <div class="modal" id="createFolderModal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3>Create New Folder</h3>
+                <button class="btn-close" id="closeCreateFolderModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newFolderName">Folder Name:</label>
+                    <input type="text" id="newFolderName" class="form-input" placeholder="Enter folder name">
+                </div>
+                <div class="form-group">
+                    <label>Location:</label>
+                    <div class="location-info" id="createFolderLocation">
+                        <i class="fas fa-folder"></i>
+                        <span>Current Folder</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelCreateFolder">Cancel</button>
+                <button class="btn btn-primary" id="confirmCreateFolder">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirm Action</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure you want to proceed?</p>
+                <div class="confirm-details" id="confirmDetails"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelConfirm">Cancel</button>
+                <button class="btn btn-primary" id="proceedConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/explorer-api.js"></script>
+    <script src="js/explorer-ui.js"></script>
+    <script src="js/explorer-main.js"></script>
+</body>
+</html>

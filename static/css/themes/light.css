@@ -1,0 +1,318 @@
+/**
+ * 라이트 테마 스타일
+ * 기본 라이트 모드 색상과 스타일 정의
+ */
+
+:root,
+[data-theme="light"] {
+  /* === 기본 색상 === */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-quaternary: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-quaternary: #94a3b8;
+  
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
+  --border-focus: var(--color-primary-500);
+  
+  /* === 그림자 === */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* === 컴포넌트별 색상 === */
+  
+  /* 헤더 */
+  --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --header-text: #ffffff;
+  --header-border: rgba(255, 255, 255, 0.1);
+  
+  /* 네비게이션 */
+  --nav-bg: var(--bg-secondary);
+  --nav-border: var(--border-primary);
+  --nav-item-bg: var(--bg-tertiary);
+  --nav-item-bg-hover: var(--bg-quaternary);
+  --nav-item-bg-active: var(--color-primary-500);
+  --nav-item-text: var(--text-secondary);
+  --nav-item-text-hover: var(--text-primary);
+  --nav-item-text-active: #ffffff;
+  
+  /* 카드 */
+  --card-bg: var(--bg-secondary);
+  --card-border: var(--border-primary);
+  --card-header-bg: var(--bg-tertiary);
+  --card-shadow: var(--shadow-sm);
+  --card-shadow-hover: var(--shadow-md);
+  
+  /* 버튼 */
+  --btn-bg: var(--bg-secondary);
+  --btn-bg-hover: var(--bg-tertiary);
+  --btn-border: var(--border-primary);
+  --btn-text: var(--text-primary);
+  --btn-shadow: var(--shadow-sm);
+  --btn-shadow-hover: var(--shadow-md);
+  
+  /* 입력 필드 */
+  --input-bg: var(--bg-secondary);
+  --input-bg-focus: var(--bg-secondary);
+  --input-border: var(--border-primary);
+  --input-border-focus: var(--color-primary-500);
+  --input-text: var(--text-primary);
+  --input-placeholder: var(--text-tertiary);
+  
+  /* 모달 */
+  --modal-bg: var(--bg-secondary);
+  --modal-backdrop: rgba(0, 0, 0, 0.5);
+  --modal-border: var(--border-primary);
+  --modal-shadow: var(--shadow-xl);
+  
+  /* 토스트 */
+  --toast-bg: var(--bg-secondary);
+  --toast-border: var(--border-primary);
+  --toast-shadow: var(--shadow-lg);
+  
+  /* 진행률 바 */
+  --progress-bg: var(--bg-tertiary);
+  --progress-fill: var(--color-primary-500);
+  --progress-text: var(--text-secondary);
+  
+  /* 상태 인디케이터 */
+  --status-healthy-bg: var(--color-success-100);
+  --status-healthy-text: var(--color-success-700);
+  --status-healthy-border: var(--color-success-200);
+  
+  --status-warning-bg: var(--color-warning-100);
+  --status-warning-text: var(--color-warning-700);
+  --status-warning-border: var(--color-warning-200);
+  
+  --status-error-bg: var(--color-error-100);
+  --status-error-text: var(--color-error-700);
+  --status-error-border: var(--color-error-200);
+  
+  --status-unknown-bg: var(--color-gray-100);
+  --status-unknown-text: var(--color-gray-600);
+  --status-unknown-border: var(--color-gray-200);
+  
+  /* 드롭다운 */
+  --dropdown-bg: var(--bg-secondary);
+  --dropdown-border: var(--border-primary);
+  --dropdown-shadow: var(--shadow-lg);
+  --dropdown-item-bg-hover: var(--bg-tertiary);
+  
+  /* 테이블 */
+  --table-bg: var(--bg-secondary);
+  --table-border: var(--border-primary);
+  --table-header-bg: var(--bg-tertiary);
+  --table-row-bg-hover: var(--bg-tertiary);
+  --table-row-bg-selected: var(--color-primary-50);
+  
+  /* 스크롤바 */
+  --scrollbar-track: var(--bg-tertiary);
+  --scrollbar-thumb: var(--border-secondary);
+  --scrollbar-thumb-hover: var(--text-tertiary);
+  
+  /* === 특수 효과 === */
+  
+  /* 글래스모피즘 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-backdrop-filter: blur(10px) saturate(180%);
+  
+  /* 그라데이션 */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
+  --gradient-success: linear-gradient(135deg, var(--color-success-500) 0%, var(--color-success-600) 100%);
+  --gradient-warning: linear-gradient(135deg, var(--color-warning-500) 0%, var(--color-warning-600) 100%);
+  --gradient-error: linear-gradient(135deg, var(--color-error-500) 0%, var(--color-error-600) 100%);
+  
+  /* 패턴 */
+  --pattern-dots: radial-gradient(circle at 1px 1px, var(--text-quaternary) 1px, transparent 0);
+  --pattern-grid: 
+    linear-gradient(var(--border-primary) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-primary) 1px, transparent 1px);
+}
+
+/* === 라이트 테마 전용 스타일 === */
+
+/* 로고와 브랜딩 */
+.logo-light {
+  display: block;
+}
+
+.logo-dark {
+  display: none;
+}
+
+/* 아이콘 */
+.icon-theme::before {
+  content: '🌙'; /* 달 아이콘 (다크 모드로 전환) */
+}
+
+/* 이미지 필터 */
+.img-invert {
+  filter: none;
+}
+
+/* 코드 블록 */
+.code-block {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  color: #212529;
+}
+
+/* 신택스 하이라이팅 */
+.hljs {
+  background: #f8f9fa;
+  color: #333;
+}
+
+.hljs-comment {
+  color: #6c757d;
+}
+
+.hljs-keyword {
+  color: #007bff;
+}
+
+.hljs-string {
+  color: #28a745;
+}
+
+.hljs-number {
+  color: #fd7e14;
+}
+
+/* === 상태별 색상 강화 === */
+
+/* 성공 상태 */
+.success-bg { background-color: var(--color-success-50); }
+.success-text { color: var(--color-success-700); }
+.success-border { border-color: var(--color-success-200); }
+
+/* 경고 상태 */
+.warning-bg { background-color: var(--color-warning-50); }
+.warning-text { color: var(--color-warning-700); }
+.warning-border { border-color: var(--color-warning-200); }
+
+/* 오류 상태 */
+.error-bg { background-color: var(--color-error-50); }
+.error-text { color: var(--color-error-700); }
+.error-border { border-color: var(--color-error-200); }
+
+/* 정보 상태 */
+.info-bg { background-color: var(--color-info-50); }
+.info-text { color: var(--color-info-700); }
+.info-border { border-color: var(--color-info-200); }
+
+/* === 애니메이션 === */
+
+/* 페이드인 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 슬라이드업 */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 펄스 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 로딩 스피너 */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === 유틸리티 클래스 === */
+
+/* 배경 */
+.bg-light { background-color: var(--bg-primary); }
+.bg-white { background-color: var(--bg-secondary); }
+.bg-gray { background-color: var(--bg-tertiary); }
+
+/* 텍스트 */
+.text-light { color: var(--text-tertiary); }
+.text-muted { color: var(--text-quaternary); }
+
+/* 테두리 */
+.border-light { border-color: var(--border-primary); }
+
+/* 그림자 */
+.shadow-light { box-shadow: var(--shadow-sm); }
+.shadow-medium { box-shadow: var(--shadow-md); }
+.shadow-heavy { box-shadow: var(--shadow-lg); }
+
+/* === 인쇄 스타일 === */
+@media print {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f8f9fa;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-primary: #cccccc;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-xl: none;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* === 접근성 개선 === */
+
+/* 고대비 모드 */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --bg-primary: #ffffff;
+    --bg-secondary: #ffffff;
+    --border-primary: #000000;
+    --color-primary: #0000ff;
+    --color-success: #008000;
+    --color-warning: #ff8000;
+    --color-error: #ff0000;
+  }
+}
+
+/* 모션 감소 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

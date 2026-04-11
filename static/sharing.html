@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공유 관리 - Google Drive</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/admin-page.css">
+    <script src="js/iframe-detect.js?v=20260328e"></script>
+    <style>
+        .scan-input-area {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .scan-input-area input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .scan-input-area input:focus {
+            outline: none;
+            border-color: #5865f2;
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+        }
+
+        .progress-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f4f5f7 0%, #f4f5f7 100%);
+            border-radius: 12px;
+            border: 1px solid #e3e5e8;
+        }
+
+        .progress-bar-container {
+            height: 24px;
+            background: #e3e5e8;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #5865f2 0%, #4752c4 100%);
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .progress-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #80848e;
+        }
+
+        .progress-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: #f4f5f7;
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #bae6fd;
+        }
+
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0369a1;
+        }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: #80848e;
+            margin-top: 4px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-bar input, .filter-bar select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .filter-bar input:focus, .filter-bar select:focus {
+            outline: none;
+            border-color: #5865f2;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table th {
+            background: #f4f5f7;
+            padding: 12px;
+            text-align: left;
+            font-size: 0.85rem;
+            color: #475569;
+            border-bottom: 2px solid #e3e5e8;
+            position: sticky;
+            top: 0;
+        }
+
+        .results-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f4f5f7;
+            font-size: 0.9rem;
+        }
+
+        .results-table tr:hover {
+            background: #f4f5f7;
+        }
+
+        .results-table .file-icon {
+            color: #80848e;
+            margin-right: 6px;
+        }
+
+        .results-table .file-link {
+            color: #4752c4;
+            text-decoration: none;
+        }
+
+        .results-table .file-link:hover {
+            text-decoration: underline;
+        }
+
+        .perm-badges {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .perm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .perm-badge.owner {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .perm-badge.writer {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .perm-badge.reader {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .perm-badge.commenter {
+            background: #fce7f3;
+            color: #9d174d;
+        }
+
+        .perm-detail-row {
+            background: #f4f5f7;
+        }
+
+        .perm-detail-row td {
+            padding: 8px 12px 8px 48px;
+        }
+
+        .perm-detail-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .perm-detail-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid #e3e5e8;
+            font-size: 0.85rem;
+        }
+
+        .perm-detail-list li:last-child {
+            border-bottom: none;
+        }
+
+        .bulk-action-bar {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 16px 20px;
+            border-top: 2px solid #5865f2;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 0 0 12px 12px;
+        }
+
+        .bulk-action-bar .selected-count {
+            font-weight: 600;
+            color: #2b2d31;
+        }
+
+        .bulk-action-bar .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .change-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .change-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .change-modal h3 {
+            margin: 0 0 16px;
+            color: #2b2d31;
+        }
+
+        .change-progress-bar {
+            height: 20px;
+            background: #e3e5e8;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .change-progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #5865f2, #4752c4);
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e3e5e8;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #80848e;
+            padding: 4px;
+        }
+
+        .toggle-btn:hover {
+            color: #5865f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title"><i class="fas fa-share-alt"></i> 공유 관리</div>
+        <div class="header-nav">
+            <a href="index.html"><i class="fas fa-home"></i> 대시보드</a>
+        </div>
+    </div>
+
+    <div class="help-panel">
+        <button class="help-panel-toggle" onclick="toggleHelpPanel(this)">
+            <span><i class="fas fa-info-circle"></i> 사용 가이드</span>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="help-panel-body">
+            <p><strong>공유 관리</strong>는 Google Drive 폴더 내 파일들의 공유 현황을 조회하고 권한을 일괄 관리하는 도구입니다.</p>
+            <p><strong>사용 방법:</strong></p>
+            <ul>
+                <li>Google Drive 폴더 URL 또는 ID를 입력하고 <strong>스캔 시작</strong>을 클릭합니다.</li>
+                <li>스캔이 완료되면 파일별 공유 상태와 권한 목록이 표시됩니다.</li>
+                <li>파일을 선택하여 권한을 일괄 변경하거나 공유를 제거할 수 있습니다.</li>
+            </ul>
+            <p><strong>주요 기능:</strong> 공유 현황 스캔, 권한 일괄 변경 (뷰어/편집자), 공유 일괄 제거</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+
+        <!-- Input Section -->
+        <div class="card full-width">
+            <h2><i class="fas fa-search"></i> 공유 현황 스캔</h2>
+            <p style="color: #80848e; margin-bottom: 16px;">
+                Google Drive 폴더의 URL 또는 ID를 입력하면 해당 폴더 내 파일들의 공유 상태를 스캔합니다.
+            </p>
+
+            <div class="scan-input-area">
+                <input type="text" id="folderInput" placeholder="Google Drive 폴더 URL 또는 ID 입력">
+                <button class="action-btn" id="scanBtn" onclick="startSharingScan()" style="white-space: nowrap; padding: 10px 20px;">
+                    <i class="fas fa-search"></i> 스캔 시작
+                </button>
+            </div>
+
+            <div id="folderResolveArea" style="margin-bottom: 12px;"></div>
+
+            <label class="checkbox-label">
+                <input type="checkbox" id="includeSubfolders" checked>
+                <span>하위 폴더 포함</span>
+            </label>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="card full-width hidden" id="progressCard">
+            <h2><i class="fas fa-spinner fa-spin"></i> 스캔 진행 중</h2>
+
+            <div class="progress-section">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="scanProgressBar" style="width: 0%;">0%</div>
+                </div>
+
+                <div class="progress-stats">
+                    <div class="progress-stat">
+                        <i class="fas fa-file" style="color: #5865f2;"></i>
+                        <span>스캔: <strong id="scannedCount">0</strong> / <span id="totalCount">0</span></span>
+                    </div>
+                    <div class="progress-stat">
+                        <i class="fas fa-share-alt" style="color: #f59e0b;"></i>
+                        <span>공유된 항목: <strong id="sharedCount">0</strong></span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 12px;">
+                    <button class="action-btn warning" id="cancelScanBtn" onclick="cancelScan()" style="padding: 8px 16px;">
+                        <i class="fas fa-stop"></i> 스캔 취소
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card full-width hidden" id="resultsCard">
+            <h2><i class="fas fa-list"></i> 스캔 결과</h2>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summaryCards">
+                <div class="summary-card">
+                    <div class="value" id="summaryTotal">0</div>
+                    <div class="label">전체 항목</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value" id="summaryShared">0</div>
+                    <div class="label">공유된 항목</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value" id="summaryUsers">0</div>
+                    <div class="label">공유 대상 수</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <input type="text" id="emailFilter" placeholder="이메일 검색..." oninput="applyFilters()">
+                <select id="roleFilter" onchange="applyFilters()">
+                    <option value="">모든 권한</option>
+                    <option value="writer">편집자</option>
+                    <option value="reader">뷰어</option>
+                    <option value="commenter">댓글 작성자</option>
+                </select>
+                <button class="action-btn" onclick="selectAllVisible()" style="padding: 6px 12px; font-size: 0.85rem;">
+                    <i class="fas fa-check-square"></i> 전체 선택
+                </button>
+                <button class="action-btn" onclick="deselectAll()" style="padding: 6px 12px; font-size: 0.85rem;">
+                    <i class="far fa-square"></i> 선택 해제
+                </button>
+            </div>
+
+            <!-- Results Table -->
+            <div class="table-container">
+                <table class="results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"></th>
+                            <th style="width: 30px;"></th>
+                            <th>파일명</th>
+                            <th>경로</th>
+                            <th>공유 대상</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bulk Action Bar -->
+            <div class="bulk-action-bar hidden" id="bulkActionBar">
+                <span class="selected-count"><span id="selectedCountText">0</span>개 선택됨</span>
+
+                <div style="display: flex; align-items: center; gap: 8px; margin-left: 16px;">
+                    <label style="font-size: 0.85rem; color: #80848e;">대상 이메일:</label>
+                    <input type="text" id="targetEmail" placeholder="user@example.com" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; width: 200px;">
+                </div>
+
+                <div class="action-buttons">
+                    <button class="action-btn warning" onclick="bulkRemoveSharing()" style="padding: 8px 16px;">
+                        <i class="fas fa-user-minus"></i> 공유 해제
+                    </button>
+                    <button class="action-btn" onclick="bulkChangeRole('reader')" style="padding: 8px 16px;">
+                        <i class="fas fa-eye"></i> 뷰어로 변경
+                    </button>
+                    <button class="action-btn" onclick="bulkChangeRole('writer')" style="padding: 8px 16px;">
+                        <i class="fas fa-edit"></i> 편집자로 변경
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Progress Modal -->
+        <div class="change-modal-overlay hidden" id="changeModal">
+            <div class="change-modal">
+                <h3><i class="fas fa-cog fa-spin"></i> 권한 변경 중</h3>
+                <div class="change-progress-bar">
+                    <div class="fill" id="changeProgressFill" style="width: 0%;"></div>
+                </div>
+                <div class="progress-stats" style="justify-content: center;">
+                    <div class="progress-stat">
+                        <i class="fas fa-check-circle" style="color: #3ba55d;"></i>
+                        <span>성공: <strong id="changeSuccessCount">0</strong></span>
+                    </div>
+                    <div class="progress-stat">
+                        <i class="fas fa-times-circle" style="color: #ed4245;"></i>
+                        <span>실패: <strong id="changeFailureCount">0</strong></span>
+                    </div>
+                    <div class="progress-stat">
+                        <span>진행: <strong id="changeProcessedCount">0</strong> / <span id="changeTotalCount">0</span></span>
+                    </div>
+                </div>
+                <div id="changeCompleteArea" class="hidden" style="margin-top: 16px; text-align: center;">
+                    <button class="action-btn success" onclick="closeChangeModal()" style="padding: 8px 24px;">
+                        <i class="fas fa-check"></i> 확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/folder-resolve.js"></script>
+    <script src="js/sharing.js"></script>
+</body>
+</html>

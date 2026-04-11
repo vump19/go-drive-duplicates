@@ -1,0 +1,484 @@
+/**
+ * 카드 컴포넌트 스타일
+ * 콘텐츠를 그룹화하는 카드 디자인
+ */
+
+/* === 기본 카드 === */
+.card {
+  background-color: var(--bg-secondary);
+  border: var(--card-border-width) solid var(--border-primary);
+  border-radius: var(--card-border-radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--duration-200) var(--ease-in-out);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* === 카드 헤더 === */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--card-padding);
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-title i {
+  font-size: 1.125em;
+  color: var(--color-primary);
+}
+
+.card-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-1);
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/* === 카드 바디 === */
+.card-body {
+  padding: var(--card-padding);
+}
+
+.card-body > *:last-child {
+  margin-bottom: 0;
+}
+
+/* === 카드 푸터 === */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--card-padding);
+  background-color: var(--bg-tertiary);
+  border-top: 1px solid var(--border-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* === 카드 변형 === */
+
+/* 압축된 카드 */
+.card-compact .card-header {
+  padding: var(--spacing-3) var(--spacing-4);
+}
+
+.card-compact .card-body {
+  padding: var(--spacing-4);
+}
+
+.card-compact .card-footer {
+  padding: var(--spacing-3) var(--spacing-4);
+}
+
+/* 넓은 카드 */
+.card-spacious .card-header {
+  padding: var(--spacing-6) var(--spacing-8);
+}
+
+.card-spacious .card-body {
+  padding: var(--spacing-8);
+}
+
+.card-spacious .card-footer {
+  padding: var(--spacing-6) var(--spacing-8);
+}
+
+/* 평면 카드 */
+.card-flat {
+  border: none;
+  box-shadow: none;
+}
+
+.card-flat:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* 테두리 강조 카드 */
+.card-bordered {
+  border-width: 2px;
+}
+
+/* 그림자 강조 카드 */
+.card-elevated {
+  box-shadow: var(--shadow-lg);
+}
+
+.card-elevated:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px);
+}
+
+/* === 상태별 카드 === */
+.card-primary {
+  border-color: var(--color-primary);
+}
+
+.card-primary .card-header {
+  background-color: var(--color-primary-light);
+  border-bottom-color: var(--color-primary);
+}
+
+.card-success {
+  border-color: var(--color-success);
+}
+
+.card-success .card-header {
+  background-color: var(--color-success-light);
+  border-bottom-color: var(--color-success);
+}
+
+.card-warning {
+  border-color: var(--color-warning);
+}
+
+.card-warning .card-header {
+  background-color: var(--color-warning-light);
+  border-bottom-color: var(--color-warning);
+}
+
+.card-danger {
+  border-color: var(--color-error);
+}
+
+.card-danger .card-header {
+  background-color: var(--color-error-light);
+  border-bottom-color: var(--color-error);
+}
+
+.card-info {
+  border-color: var(--color-info);
+}
+
+.card-info .card-header {
+  background-color: var(--color-info-light);
+  border-bottom-color: var(--color-info);
+}
+
+/* === 대시보드 카드 === */
+.dashboard-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card .card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === 상태 카드 === */
+.status-card {
+  position: relative;
+}
+
+.status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.status-card.status-success::before {
+  background-color: var(--color-success);
+}
+
+.status-card.status-warning::before {
+  background-color: var(--color-warning);
+}
+
+.status-card.status-danger::before {
+  background-color: var(--color-error);
+}
+
+.status-card.status-info::before {
+  background-color: var(--color-info);
+}
+
+/* === 통계 카드 === */
+.stats-card .card-body {
+  text-align: center;
+}
+
+.stats-value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  line-height: 1;
+  margin-bottom: var(--spacing-2);
+}
+
+.stats-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.stats-change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  margin-top: var(--spacing-2);
+}
+
+.stats-change.positive {
+  color: var(--color-success);
+}
+
+.stats-change.negative {
+  color: var(--color-error);
+}
+
+/* === 카드 그리드 === */
+.card-grid {
+  display: grid;
+  gap: var(--gap-md);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.card-grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.card-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.card-grid-4 {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+/* === 대시보드 그리드 === */
+.dashboard-grid {
+  display: grid;
+  gap: var(--gap-lg);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+/* === 카드 내 콘텐츠 === */
+
+/* 목록 */
+.card .list {
+  margin: calc(var(--card-padding) * -1);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.card .list-item {
+  padding: var(--spacing-3) var(--card-padding);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.card .list-item:last-child {
+  border-bottom: none;
+}
+
+/* 테이블 */
+.card .table {
+  margin: calc(var(--card-padding) * -1);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.card .table th:first-child,
+.card .table td:first-child {
+  padding-left: var(--card-padding);
+}
+
+.card .table th:last-child,
+.card .table td:last-child {
+  padding-right: var(--card-padding);
+}
+
+/* === 접을 수 있는 카드 === */
+.card-collapsible .card-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-collapsible .card-header::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid currentColor;
+  transition: transform var(--duration-200) var(--ease-in-out);
+}
+
+.card-collapsible.collapsed .card-header::after {
+  transform: rotate(-90deg);
+}
+
+.card-collapsible .card-body {
+  transition: all var(--duration-300) var(--ease-in-out);
+  overflow: hidden;
+}
+
+.card-collapsible.collapsed .card-body {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+}
+
+/* === 카드 오버레이 === */
+.card-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0)
+  );
+  pointer-events: none;
+}
+
+/* === 로딩 상태 === */
+.card-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.card-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme="dark"] .card-loading::after {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* === 반응형 디자인 === */
+@media (max-width: 768px) {
+  .card-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+  
+  .card-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    border-radius: var(--radius-md);
+  }
+  
+  .card-header,
+  .card-body,
+  .card-footer {
+    padding-left: var(--spacing-4);
+    padding-right: var(--spacing-4);
+  }
+  
+  .stats-value {
+    font-size: var(--text-2xl);
+  }
+}
+
+/* === 다크 테마 조정 === */
+[data-theme="dark"] .card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .card:hover {
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .card-elevated {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .card-elevated:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* === 고대비 모드 === */
+@media (prefers-contrast: high) {
+  .card {
+    border-width: 2px;
+  }
+  
+  .card-header {
+    border-bottom-width: 2px;
+  }
+  
+  .card-footer {
+    border-top-width: 2px;
+  }
+}
+
+/* === 애니메이션 감소 모드 === */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  
+  .card-elevated:hover {
+    transform: none;
+  }
+  
+  .card-collapsible .card-header::after,
+  .card-collapsible .card-body {
+    transition: none;
+  }
+}

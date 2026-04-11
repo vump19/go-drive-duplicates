@@ -1,0 +1,441 @@
+/**
+ * 다크 테마 스타일
+ * 다크 모드 색상과 스타일 정의
+ */
+
+[data-theme="dark"] {
+  /* === 기본 색상 === */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-quaternary: #475569;
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #94a3b8;
+  --text-quaternary: #64748b;
+  
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --border-focus: var(--color-primary-400);
+  
+  /* === 그림자 === */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  
+  /* === 컴포넌트별 색상 === */
+  
+  /* 헤더 */
+  --header-bg: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+  --header-text: #ffffff;
+  --header-border: rgba(255, 255, 255, 0.1);
+  
+  /* 네비게이션 */
+  --nav-bg: var(--bg-secondary);
+  --nav-border: var(--border-primary);
+  --nav-item-bg: var(--bg-tertiary);
+  --nav-item-bg-hover: var(--bg-quaternary);
+  --nav-item-bg-active: var(--color-primary-600);
+  --nav-item-text: var(--text-secondary);
+  --nav-item-text-hover: var(--text-primary);
+  --nav-item-text-active: #ffffff;
+  
+  /* 카드 */
+  --card-bg: var(--bg-secondary);
+  --card-border: var(--border-primary);
+  --card-header-bg: var(--bg-tertiary);
+  --card-shadow: var(--shadow-sm);
+  --card-shadow-hover: var(--shadow-md);
+  
+  /* 버튼 */
+  --btn-bg: var(--bg-secondary);
+  --btn-bg-hover: var(--bg-tertiary);
+  --btn-border: var(--border-primary);
+  --btn-text: var(--text-primary);
+  --btn-shadow: var(--shadow-sm);
+  --btn-shadow-hover: var(--shadow-md);
+  
+  /* 입력 필드 */
+  --input-bg: var(--bg-secondary);
+  --input-bg-focus: var(--bg-secondary);
+  --input-border: var(--border-primary);
+  --input-border-focus: var(--color-primary-400);
+  --input-text: var(--text-primary);
+  --input-placeholder: var(--text-tertiary);
+  
+  /* 모달 */
+  --modal-bg: var(--bg-secondary);
+  --modal-backdrop: rgba(0, 0, 0, 0.8);
+  --modal-border: var(--border-primary);
+  --modal-shadow: var(--shadow-xl);
+  
+  /* 토스트 */
+  --toast-bg: var(--bg-secondary);
+  --toast-border: var(--border-primary);
+  --toast-shadow: var(--shadow-lg);
+  
+  /* 진행률 바 */
+  --progress-bg: var(--bg-tertiary);
+  --progress-fill: var(--color-primary-500);
+  --progress-text: var(--text-secondary);
+  
+  /* 상태 인디케이터 */
+  --status-healthy-bg: rgba(34, 197, 94, 0.2);
+  --status-healthy-text: #4ade80;
+  --status-healthy-border: rgba(34, 197, 94, 0.4);
+  
+  --status-warning-bg: rgba(245, 158, 11, 0.2);
+  --status-warning-text: #fbbf24;
+  --status-warning-border: rgba(245, 158, 11, 0.4);
+  
+  --status-error-bg: rgba(239, 68, 68, 0.2);
+  --status-error-text: #f87171;
+  --status-error-border: rgba(239, 68, 68, 0.4);
+  
+  --status-unknown-bg: rgba(107, 114, 128, 0.2);
+  --status-unknown-text: #9ca3af;
+  --status-unknown-border: rgba(107, 114, 128, 0.4);
+  
+  /* 드롭다운 */
+  --dropdown-bg: var(--bg-secondary);
+  --dropdown-border: var(--border-primary);
+  --dropdown-shadow: var(--shadow-lg);
+  --dropdown-item-bg-hover: var(--bg-tertiary);
+  
+  /* 테이블 */
+  --table-bg: var(--bg-secondary);
+  --table-border: var(--border-primary);
+  --table-header-bg: var(--bg-tertiary);
+  --table-row-bg-hover: var(--bg-tertiary);
+  --table-row-bg-selected: rgba(59, 130, 246, 0.2);
+  
+  /* 스크롤바 */
+  --scrollbar-track: var(--bg-tertiary);
+  --scrollbar-thumb: var(--border-secondary);
+  --scrollbar-thumb-hover: var(--text-tertiary);
+  
+  /* === 특수 효과 === */
+  
+  /* 글래스모피즘 */
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-backdrop-filter: blur(10px) saturate(180%);
+  
+  /* 그라데이션 */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
+  --gradient-success: linear-gradient(135deg, var(--color-success-500) 0%, var(--color-success-600) 100%);
+  --gradient-warning: linear-gradient(135deg, var(--color-warning-500) 0%, var(--color-warning-600) 100%);
+  --gradient-error: linear-gradient(135deg, var(--color-error-500) 0%, var(--color-error-600) 100%);
+  
+  /* 패턴 */
+  --pattern-dots: radial-gradient(circle at 1px 1px, var(--text-quaternary) 1px, transparent 0);
+  --pattern-grid: 
+    linear-gradient(var(--border-primary) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-primary) 1px, transparent 1px);
+  
+  /* === 색상 조정 === */
+  
+  /* Primary 색상 밝기 조정 */
+  --color-primary: var(--color-primary-400);
+  --color-primary-hover: var(--color-primary-300);
+  --color-primary-active: var(--color-primary-500);
+  --color-primary-light: rgba(59, 130, 246, 0.2);
+  
+  /* Success 색상 조정 */
+  --color-success: var(--color-success-400);
+  --color-success-hover: var(--color-success-300);
+  --color-success-light: rgba(34, 197, 94, 0.2);
+  
+  /* Warning 색상 조정 */
+  --color-warning: var(--color-warning-400);
+  --color-warning-hover: var(--color-warning-300);
+  --color-warning-light: rgba(245, 158, 11, 0.2);
+  
+  /* Error 색상 조정 */
+  --color-error: var(--color-error-400);
+  --color-error-hover: var(--color-error-300);
+  --color-error-light: rgba(239, 68, 68, 0.2);
+  
+  /* Info 색상 조정 */
+  --color-info: var(--color-info-400);
+  --color-info-hover: var(--color-info-300);
+  --color-info-light: rgba(6, 182, 212, 0.2);
+}
+
+/* === 다크 테마 전용 스타일 === */
+
+[data-theme="dark"] {
+  /* 로고와 브랜딩 */
+  .logo-light {
+    display: none;
+  }
+  
+  .logo-dark {
+    display: block;
+  }
+  
+  /* 아이콘 */
+  .icon-theme::before {
+    content: '☀️'; /* 태양 아이콘 (라이트 모드로 전환) */
+  }
+  
+  /* 이미지 필터 */
+  .img-invert {
+    filter: invert(1) hue-rotate(180deg);
+  }
+  
+  /* 코드 블록 */
+  .code-block {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+  }
+  
+  /* 신택스 하이라이팅 */
+  .hljs {
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+  
+  .hljs-comment {
+    color: #94a3b8;
+  }
+  
+  .hljs-keyword {
+    color: #60a5fa;
+  }
+  
+  .hljs-string {
+    color: #4ade80;
+  }
+  
+  .hljs-number {
+    color: #fb923c;
+  }
+  
+  /* === 컴포넌트별 다크 테마 조정 === */
+  
+  /* 버튼 그림자 강화 */
+  .btn-primary {
+    box-shadow: 0 1px 3px 0 rgba(59, 130, 246, 0.3);
+  }
+  
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 8px 0 rgba(59, 130, 246, 0.4);
+  }
+  
+  /* 카드 그림자 조정 */
+  .card-elevated {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  }
+  
+  .card-elevated:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* 입력 필드 */
+  .form-input {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+  }
+  
+  .form-input:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+  
+  .form-input::placeholder {
+    color: var(--text-tertiary);
+  }
+  
+  /* 테이블 줄무늬 */
+  .table-striped tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+  
+  /* 드래그 앤 드롭 영역 */
+  .drop-zone {
+    border-color: var(--border-primary);
+    background-color: var(--bg-tertiary);
+  }
+  
+  .drop-zone.drag-over {
+    border-color: var(--color-primary-400);
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  
+  /* 툴팁 */
+  .tooltip {
+    background-color: var(--bg-quaternary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+  }
+  
+  /* 뱃지 */
+  .badge {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+  }
+  
+  .badge-primary {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: var(--color-primary-300);
+    border-color: var(--color-primary-600);
+  }
+  
+  /* === 상태별 색상 강화 === */
+  
+  /* 성공 상태 */
+  .success-bg { background-color: rgba(34, 197, 94, 0.1); }
+  .success-text { color: #4ade80; }
+  .success-border { border-color: rgba(34, 197, 94, 0.3); }
+  
+  /* 경고 상태 */
+  .warning-bg { background-color: rgba(245, 158, 11, 0.1); }
+  .warning-text { color: #fbbf24; }
+  .warning-border { border-color: rgba(245, 158, 11, 0.3); }
+  
+  /* 오류 상태 */
+  .error-bg { background-color: rgba(239, 68, 68, 0.1); }
+  .error-text { color: #f87171; }
+  .error-border { border-color: rgba(239, 68, 68, 0.3); }
+  
+  /* 정보 상태 */
+  .info-bg { background-color: rgba(6, 182, 212, 0.1); }
+  .info-text { color: #22d3ee; }
+  .info-border { border-color: rgba(6, 182, 212, 0.3); }
+  
+  /* === 네온 효과 === */
+  .neon-glow {
+    box-shadow: 
+      0 0 5px var(--color-primary-400),
+      0 0 10px var(--color-primary-400),
+      0 0 15px var(--color-primary-400);
+  }
+  
+  .neon-text {
+    color: var(--color-primary-300);
+    text-shadow: 
+      0 0 5px var(--color-primary-400),
+      0 0 10px var(--color-primary-400),
+      0 0 15px var(--color-primary-400);
+  }
+  
+  /* === 발광 효과 === */
+  .glow-on-hover {
+    transition: all var(--duration-300) var(--ease-in-out);
+  }
+  
+  .glow-on-hover:hover {
+    box-shadow: 
+      0 0 20px rgba(59, 130, 246, 0.3),
+      0 0 40px rgba(59, 130, 246, 0.2),
+      0 0 60px rgba(59, 130, 246, 0.1);
+  }
+  
+  /* === 유틸리티 클래스 === */
+  
+  /* 배경 */
+  .bg-dark { background-color: var(--bg-primary); }
+  .bg-darker { background-color: var(--bg-secondary); }
+  .bg-darkest { background-color: var(--bg-tertiary); }
+  
+  /* 텍스트 */
+  .text-light { color: var(--text-primary); }
+  .text-lighter { color: var(--text-secondary); }
+  .text-muted { color: var(--text-tertiary); }
+  
+  /* 테두리 */
+  .border-dark { border-color: var(--border-primary); }
+  
+  /* 그림자 */
+  .shadow-dark { box-shadow: var(--shadow-md); }
+  .shadow-darker { box-shadow: var(--shadow-lg); }
+  
+  /* === 스크롤바 스타일링 === */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+    border-radius: var(--radius-sm);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+  }
+  
+  /* Firefox 스크롤바 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-secondary) var(--bg-tertiary);
+  }
+  
+  /* === 선택 영역 === */
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.3);
+    color: var(--text-primary);
+  }
+  
+  ::-moz-selection {
+    background-color: rgba(59, 130, 246, 0.3);
+    color: var(--text-primary);
+  }
+}
+
+/* === 다크 테마 애니메이션 === */
+[data-theme="dark"] {
+  /* 페이드인 (다크 버전) */
+  @keyframes fadeInDark {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* 글로우 펄스 */
+  @keyframes glowPulse {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+  }
+  
+  .pulse-glow {
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+}
+
+/* === 고대비 다크 모드 === */
+@media (prefers-contrast: high) {
+  [data-theme="dark"] {
+    --bg-primary: #000000;
+    --bg-secondary: #111111;
+    --bg-tertiary: #222222;
+    --text-primary: #ffffff;
+    --text-secondary: #ffffff;
+    --border-primary: #ffffff;
+    --color-primary: #00ffff;
+    --color-success: #00ff00;
+    --color-warning: #ffff00;
+    --color-error: #ff0000;
+  }
+}

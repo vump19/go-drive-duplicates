@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프론트엔드 설정 테스트</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f7;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+        }
+        .status-card.success {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        .status-card.error {
+            border-color: #dc3545;
+            background: #fff8f8;
+        }
+        .status-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+        }
+        .status-card p {
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .config-section h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .config-item:last-child {
+            border-bottom: none;
+        }
+        .config-key {
+            font-weight: 600;
+            color: #495057;
+        }
+        .config-value {
+            font-family: monospace;
+            color: #007bff;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #212529;
+            color: #28a745;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 15px;
+            border-radius: 6px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 프론트엔드 설정 테스트</h1>
+        
+        <div class="status-grid">
+            <div class="status-card" id="config-status">
+                <h3>📋 설정 파일 로드</h3>
+                <p id="config-status-text">테스트 중...</p>
+            </div>
+            <div class="status-card" id="backend-status">
+                <h3>🔗 백엔드 연결</h3>
+                <p id="backend-status-text">테스트 중...</p>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>⚙️ 현재 설정</h3>
+            <div id="config-display">
+                <div class="loading"></div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>🧪 API 테스트</h3>
+            <button class="test-button" onclick="testHealthCheck()">Health Check 테스트</button>
+            <button class="test-button" onclick="testDatabaseCheck()">Database 연결 테스트</button>
+            <button class="test-button" onclick="testStorageCheck()">Storage 연결 테스트</button>
+            <button class="test-button" onclick="clearLog()">로그 지우기</button>
+        </div>
+
+        <div class="log" id="test-log"></div>
+    </div>
+
+    <script type="module">
+        import { configManager } from './js/modules/core/ConfigManager.js';
+        import { createApiService } from './js/modules/services/ApiService.js';
+
+        let config = null;
+        let apiService = null;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            logElement.innerHTML += `<div>[${timestamp}] ${prefix} ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(elementId, success, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status-card ${success ? 'success' : 'error'}`;
+            document.getElementById(`${elementId}-text`).textContent = message;
+        }
+
+        function displayConfig(config) {
+            const display = document.getElementById('config-display');
+            display.innerHTML = '';
+
+            const sections = [
+                { title: 'Frontend', data: config.frontend },
+                { title: 'Backend', data: config.backend },
+                { title: 'Features', data: config.features },
+                { title: 'UI', data: config.ui }
+            ];
+
+            sections.forEach(section => {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.innerHTML = `<h4 style="margin: 15px 0 10px 0; color: #6c757d;">${section.title}</h4>`;
+                
+                Object.entries(section.data).forEach(([key, value]) => {
+                    const item = document.createElement('div');
+                    item.className = 'config-item';
+                    
+                    let displayValue = value;
+                    if (typeof value === 'object') {
+                        displayValue = JSON.stringify(value, null, 2);
+                    }
+                    
+                    item.innerHTML = `
+                        <span class="config-key">${key.replace(/_/g, ' ')}</span>
+                        <span class="config-value">${displayValue}</span>
+                    `;
+                    sectionDiv.appendChild(item);
+                });
+                
+                display.appendChild(sectionDiv);
+            });
+        }
+
+        async function initializeTest() {
+            log('🚀 프론트엔드 설정 테스트 시작');
+
+            try {
+                // 설정 로드
+                log('📋 설정 파일 로딩...');
+                config = await configManager.loadConfig();
+                configManager.applyEnvironmentOverrides();
+                
+                updateStatus('config-status', true, '✅ 설정 파일 로드 성공');
+                log(`✅ 설정 로드 완료: ${configManager.getBackendURL()}`, 'success');
+                
+                displayConfig(config);
+
+                // API 서비스 생성
+                apiService = createApiService(configManager);
+                log(`🔗 API 서비스 초기화: ${apiService.baseURL}`, 'success');
+
+                // 백엔드 연결 테스트
+                log('🔗 백엔드 연결 테스트...');
+                try {
+                    await apiService.healthCheck();
+                    updateStatus('backend-status', true, '✅ 백엔드 연결 성공');
+                    log('✅ 백엔드 서버 연결 성공', 'success');
+                } catch (error) {
+                    updateStatus('backend-status', false, '❌ 백엔드 연결 실패');
+                    log(`❌ 백엔드 연결 실패: ${error.message}`, 'error');
+                }
+
+            } catch (error) {
+                updateStatus('config-status', false, '❌ 설정 로드 실패');
+                log(`❌ 설정 로드 실패: ${error.message}`, 'error');
+                
+                // 기본 설정으로 폴백
+                config = configManager.defaultConfig;
+                displayConfig(config);
+            }
+        }
+
+        // 전역 함수들
+        window.testHealthCheck = async function() {
+            log('🩺 Health Check 테스트 시작...');
+            try {
+                const result = await apiService.healthCheck();
+                log(`✅ Health Check 성공: ${JSON.stringify(result)}`, 'success');
+            } catch (error) {
+                log(`❌ Health Check 실패: ${error.message}`, 'error');
+            }
+        };
+
+        window.testDatabaseCheck = async function() {
+            log('🗄️ Database 연결 테스트 시작...');
+            try {
+                const result = await apiService.checkDatabase();
+                log(`✅ Database 연결 성공: ${JSON.stringify(result)}`, 'success');
+            } catch (error) {
+                log(`❌ Database 연결 실패: ${error.message}`, 'error');
+            }
+        };
+
+        window.testStorageCheck = async function() {
+            log('💾 Storage 연결 테스트 시작...');
+            try {
+                const result = await apiService.checkStorage();
+                log(`✅ Storage 연결 성공: ${JSON.stringify(result)}`, 'success');
+            } catch (error) {
+                log(`❌ Storage 연결 실패: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearLog = function() {
+            document.getElementById('test-log').innerHTML = '';
+            log('🧹 로그가 지워졌습니다.');
+        };
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', initializeTest);
+    </script>
+</body>
+</html>
