@@ -4,19 +4,19 @@ Google Drive의 중복 파일을 찾고, 폴더를 비교/정리하며, 다양�
 
 ## 주요 기능
 
-| 기능 | 설명 | 문서 |
-|------|------|------|
-| 파일 스캔 | Google Drive 전체/폴더별 메타데이터 수집 | [상세](docs/FEATURE_File_Scanning.md) |
-| 중복 검사 | SHA-256 해시 기반 중복 검출 및 그룹화 | [상세](docs/FEATURE_Duplicate_Finding.md) |
-| 폴더 비교 | 두 폴더 간 중복 비교, 비중복 파일 이동 | [상세](docs/FEATURE_Folder_Comparison.md) |
-| 폴더 내 중복 | 단일 폴더 내 중복 파일 검색 | [상세](docs/FEATURE_Single_Folder_Duplicate.md) |
-| 폴더 분석 | 구조 분석, 빈 폴더 정리, 폴더명 검색 | [상세](docs/FEATURE_Folder_Analysis.md) |
-| 파일 정리 | 휴지통 이동, 패턴 기반 일괄 정리 | [상세](docs/FEATURE_File_Cleanup.md) |
-| 일괄 아카이브 | 여러 폴더를 ZIP 압축 후 원본 정리 | [상세](docs/FEATURE_Batch_Archive.md) |
-| 파일 탐색기 | 듀얼 패널 탐색기 (복사/이동/삭제) | [상세](docs/PLAN_Dual_Panel_Explorer.md) |
-| 폴더 다운로드 | Google Drive 폴더를 ZIP으로 다운로드 | - |
-| 스마트 정리 | AI 기반 파일 정리 제안 | [상세](docs/PLAN_Smart_Organizer.md) |
-| 텔레그램 알림 | 장시간 작업 완료/실패 알림 | - |
+| 기능 | 설명 |
+|------|------|
+| 파일 스캔 | Google Drive 전체/폴더별 메타데이터 수집 |
+| 중복 검사 | SHA-256 해시 기반 중복 검출 및 그룹화 |
+| 폴더 비교 | 두 폴더 간 중복 비교, 비중복 파일 이동 |
+| 폴더 내 중복 | 단일 폴더 내 중복 파일 검색 |
+| 폴더 분석 | 구조 분석, 빈 폴더 정리, 폴더명 검색 |
+| 파일 정리 | 휴지통 이동, 패턴 기반 일괄 정리 |
+| 일괄 아카이브 | 여러 폴더를 ZIP 압축 후 원본 정리 |
+| 파일 탐색기 | 듀얼 패널 탐색기 (복사/이동/삭제) |
+| 폴더 다운로드 | Google Drive 폴더를 ZIP으로 다운로드 |
+| 스마트 정리 | AI 기반 파일 정리 제안 |
+| 텔레그램 알림 | 장시간 작업 완료/실패 알림 |
 
 ## 빠른 시작
 
@@ -57,9 +57,10 @@ go-drive-duplicates/
 │   └── infrastructure/             # 인프라 (DB, Google Drive, 설정)
 ├── static/                         # 프론트엔드 (어드민 대시보드 + 독립 페이지)
 ├── config/app.yaml                 # 서버 설정
-├── docs/                           # 기술 문서
 └── drive_duplicates.db             # SQLite DB (자동 생성)
 ```
+
+> 기술 문서는 별도 저장소 [go-drive-duplicates-docs](https://github.com/vump19/go-drive-duplicates-docs)에서 관리합니다.
 
 ## 기술 스택
 
@@ -79,18 +80,11 @@ go-drive-duplicates/
 | 검사 중단 | 체크포인트에서 자동 재개 |
 | 파일 삭제 실패 | Google Drive scope 확인 (`drive.readonly` → `drive`) |
 
-## 문서
-
-- [기능/디자인/가이드 문서 인덱스](docs/README.md)
-- [UI 디자인 가이드](docs/DESIGN_Admin_UI_Guide.md)
-- [코드 품질 가이드](docs/GUIDE_Code_Quality.md)
-- [설정 마이그레이션](docs/GUIDE_Config_Migration.md)
-- [개발 히스토리](docs/History/)
-
 ## 릴리즈
 
 | 버전 | 날짜 | 주요 변경 |
 |------|------|----------|
+| v1.5 | 2026-04 | 문서 저장소 분리, 중복 그룹 메모 기능 |
 | v1.4 | 2026-03 | 어드민 UI 레이아웃, 페이지 분리, 휴지통 이동 통일 |
 | v1.3 | 2026-01 | 일괄 아카이브, 폴더 다운로드, 대용량 응답 개선 |
 | v1.2 | 2025-12 | 삭제 방식 선택 (휴지통/완전삭제) |
@@ -98,4 +92,4 @@ go-drive-duplicates/
 | v1.0 | 2025-08 | 파일 스캔, 중복 검사, 폴더 비교 |
 
 ---
-*최종 업데이트: 2026년 3월 28일 | 버전: 1.4*
+*최종 업데이트: 2026년 4월 11일 | 버전: 1.5*
