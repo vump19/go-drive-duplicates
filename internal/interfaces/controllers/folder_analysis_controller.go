@@ -322,8 +322,9 @@ func (c *FolderAnalysisController) deleteEmptyFoldersWithSSE(w http.ResponseWrit
 	}
 
 	// Use background context for deletion operations - should not be canceled when client disconnects
+	// 핸들러가 모든 삭제 완료까지 대기하므로 defer cancel()은 삭제 작업을 중단시키지 않음
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	// Note: Don't defer cancel() here - we want deletions to complete even if client disconnects
+	defer cancel()
 
 	// 클라이언트 연결 끊김 감지
 	clientGone := r.Context().Done()
@@ -499,9 +500,6 @@ func (c *FolderAnalysisController) deleteEmptyFoldersWithSSE(w http.ResponseWrit
 			successCount += cascadeDeletedCount
 		}
 	}
-
-	// Cancel context after all deletions complete
-	cancel()
 
 	// Log final result
 	log.Printf("✅ 빈 폴더 삭제 작업 완료: %d개 성공 (초기: %d, 연쇄: %d), %d개 실패",
@@ -828,8 +826,9 @@ func (c *FolderAnalysisController) deleteFoldersByNameWithSSE(w http.ResponseWri
 	}
 
 	// Use background context for deletion operations - should not be canceled when client disconnects
+	// 핸들러가 모든 삭제 완료까지 대기하므로 defer cancel()은 삭제 작업을 중단시키지 않음
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	// Note: Don't defer cancel() here - we want deletions to complete even if client disconnects
+	defer cancel()
 
 	clientGone := r.Context().Done()
 	clientDisconnected := false
@@ -957,9 +956,6 @@ func (c *FolderAnalysisController) deleteFoldersByNameWithSSE(w http.ResponseWri
 			continue
 		}
 	}
-
-	// Cancel context after all deletions complete
-	cancel()
 
 	// Log final result
 	log.Printf("✅ 폴더 삭제 작업 완료: %d개 성공, %d개 실패 (총 %d개)", successCount, failedCount, totalCount)

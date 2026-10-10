@@ -557,7 +557,7 @@ func (app *Application) handleHomePage(w http.ResponseWriter, r *http.Request) {
             <h2>Folder Deletion Operations</h2>
             <div class="endpoint cleanup">
                 <span class="method">POST</span> <span class="path">/api/compare/delete/target-folder</span>
-                <div class="description">Delete entire target folder (100% duplicated)</div>
+                <div class="description">Delete entire target folder (100%% duplicated)</div>
             </div>
             <div class="endpoint cleanup">
                 <span class="method">POST</span> <span class="path">/api/compare/delete/duplicate-files</span>

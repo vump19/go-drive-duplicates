@@ -1,6 +1,9 @@
 package entities
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 // FileListItem represents a file or folder in the file list
 // 파일 목록의 파일 또는 폴더를 나타냄
@@ -258,11 +261,11 @@ func (opts *ListOptions) BuildGoogleDriveQuery(parentFolderID string) string {
 	}
 
 	if opts.MinSize > 0 {
-		query += " and size >= " + string(opts.MinSize)
+		query += " and size >= " + strconv.FormatInt(opts.MinSize, 10)
 	}
 
 	if opts.MaxSize > 0 {
-		query += " and size <= " + string(opts.MaxSize)
+		query += " and size <= " + strconv.FormatInt(opts.MaxSize, 10)
 	}
 
 	return query
