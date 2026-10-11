@@ -656,8 +656,29 @@ func (ps *progressService) BroadcastProgress(ctx context.Context, progress *enti
 	return nil
 }
 
+// CancelOperation marks the operation as cancelled in the database.
+// Stopping the running work itself is the caller's responsibility (e.g. cancelling its context).
 func (ps *progressService) CancelOperation(ctx context.Context, progressID int) error {
-	// Simple stub implementation - in real implementation would cancel the operation
+	progress, err := ps.progressRepo.GetByID(ctx, progressID)
+	if err != nil {
+		log.Printf("❌ CancelOperation: 진행 상태 조회 실패 - ID: %d, Error: %v", progressID, err)
+		return err
+	}
+	if progress == nil {
+		return fmt.Errorf("progress not found: %d", progressID)
+	}
+	if progress.IsCompleted() || progress.IsCancelled() {
+		return nil
+	}
+
+	progress.Cancel()
+	progress.CurrentStep = "취소됨"
+	if err := ps.progressRepo.Update(ctx, progress); err != nil {
+		log.Printf("❌ CancelOperation: 진행 상태 업데이트 실패 - ID: %d, Error: %v", progressID, err)
+		return err
+	}
+
+	log.Printf("⏹️ 작업 취소 처리 완료 - Progress ID: %d", progressID)
 	return nil
 }
 
@@ -748,6 +769,12 @@ func (ps *progressService) FailOperation(ctx context.Context, progressID int, er
 	if progress == nil {
 		log.Printf("❌ FailOperation: 진행 상태를 찾을 수 없음 - ID: %d", progressID)
 		return fmt.Errorf("progress not found: %d", progressID)
+	}
+
+	// 취소된 작업은 취소로 인해 뒤늦게 발생한 오류로 실패 처리하지 않음
+	if progress.IsCancelled() {
+		log.Printf("⚠️ FailOperation: 이미 취소된 작업이므로 상태 유지 - ID: %d", progressID)
+		return nil
 	}
 
 	// Update status to failed

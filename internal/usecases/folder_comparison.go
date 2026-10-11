@@ -386,7 +386,9 @@ func (uc *FolderComparisonUseCase) CancelComparison(ctx context.Context, progres
 
 		// The operation might have been started in a previous server session
 		// Update the status to cancelled
-		uc.progressService.CancelOperation(ctx, progressID)
+		if err := uc.progressService.CancelOperation(ctx, progressID); err != nil {
+			return fmt.Errorf("작업 상태 변경 실패: %w", err)
+		}
 		log.Printf("⏹️ 이전 세션의 작업 상태를 취소로 변경: Progress ID %d", progressID)
 		return nil
 	}
@@ -398,6 +400,11 @@ func (uc *FolderComparisonUseCase) CancelComparison(ctx context.Context, progres
 	uc.runningOpsMu.Lock()
 	delete(uc.runningOps, progressID)
 	uc.runningOpsMu.Unlock()
+
+	// 백그라운드 작업이 취소를 감지하기 전에도 조회 시 바로 취소 상태가 보이도록 즉시 반영
+	if err := uc.progressService.CancelOperation(ctx, progressID); err != nil {
+		log.Printf("⚠️ 취소 상태 저장 실패: Progress ID %d: %v", progressID, err)
+	}
 
 	log.Printf("✅ 폴더 비교 작업 취소 완료: Progress ID %d", progressID)
 	return nil
