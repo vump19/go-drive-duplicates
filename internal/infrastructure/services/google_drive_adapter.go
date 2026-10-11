@@ -1074,13 +1074,19 @@ func (g *GoogleDriveAdapter) buildFolderTree(ctx context.Context, folderID, pare
 		node.FileCount = fileCount
 	}
 
-	// Stop if reached max depth
-	if maxDepth > 0 && currentDepth >= maxDepth {
-		return node, nil
-	}
-
 	// List subfolders with pagination to get all folders
 	query := fmt.Sprintf("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", folderID)
+
+	// Stop if reached max depth, but report whether the folder has subfolders
+	// so the UI can show an expand toggle and lazy-load them
+	if maxDepth > 0 && currentDepth >= maxDepth {
+		hasSubfolders, err := g.hasAnyFile(ctx, query)
+		if err != nil {
+			log.Printf("⚠️ 하위 폴더 존재 여부 확인 실패 (%s): %v", folder.Name, err)
+		}
+		node.HasChildren = hasSubfolders
+		return node, nil
+	}
 
 	var allFolders []*drive.File
 	pageToken := ""
@@ -1121,6 +1127,20 @@ func (g *GoogleDriveAdapter) buildFolderTree(ctx context.Context, folderID, pare
 	}
 
 	return node, nil
+}
+
+// hasAnyFile reports whether at least one file matches the Drive query.
+func (g *GoogleDriveAdapter) hasAnyFile(ctx context.Context, query string) (bool, error) {
+	fileList, err := g.service.Files.List().
+		Q(query).
+		Fields("files(id)").
+		PageSize(1).
+		Context(ctx).
+		Do()
+	if err != nil {
+		return false, err
+	}
+	return len(fileList.Files) > 0, nil
 }
 
 // countFilesInFolder counts number of files (not folders) in a folder

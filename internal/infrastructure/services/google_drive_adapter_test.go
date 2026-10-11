@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"go-drive-duplicates/internal/domain/entities"
@@ -146,6 +147,63 @@ func TestListFolderContents_SendsDriveOrderBy(t *testing.T) {
 		}
 		if gotOrderBy != want {
 			t.Errorf("sortBy=%q: orderBy = %q, 기대 = %q", sortBy, gotOrderBy, want)
+		}
+	}
+}
+
+func TestListFoldersRecursive_ReportsSubfoldersAtMaxDepth(t *testing.T) {
+	// root ─┬─ A ── A1
+	//       └─ B
+	subfolders := map[string][]string{"root": {"A", "B"}, "A": {"A1"}}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path != "/files" {
+			// Files.Get: folder metadata
+			id := strings.TrimPrefix(r.URL.Path, "/files/")
+			json.NewEncoder(w).Encode(map[string]string{"id": id, "name": "folder-" + id})
+			return
+		}
+		// Files.List: only subfolder queries return results
+		q := r.URL.Query().Get("q")
+		var files []map[string]string
+		if strings.Contains(q, "mimeType = 'application/vnd.google-apps.folder'") {
+			for parent, children := range subfolders {
+				if strings.HasPrefix(q, "'"+parent+"' in parents") {
+					for _, id := range children {
+						files = append(files, map[string]string{"id": id, "name": "folder-" + id})
+					}
+				}
+			}
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"files": files})
+	}))
+	defer server.Close()
+
+	service, err := drive.NewService(context.Background(),
+		option.WithEndpoint(server.URL+"/"), option.WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("Drive 서비스 생성 실패: %v", err)
+	}
+	adapter := &GoogleDriveAdapter{service: service}
+
+	nodes, err := adapter.ListFoldersRecursive(context.Background(), "root", 1)
+	if err != nil {
+		t.Fatalf("ListFoldersRecursive 실패: %v", err)
+	}
+
+	hasChildren := make(map[string]bool)
+	for _, n := range nodes {
+		hasChildren[n.ID] = n.HasChildren
+	}
+	if len(nodes) != 3 {
+		t.Fatalf("노드 수 = %d, 기대 = 3 (root, A, B)", len(nodes))
+	}
+	// 최대 깊이에 있는 A는 하위 폴더가 있으므로 펼치기 토글이 표시되어야 함
+	want := map[string]bool{"root": true, "A": true, "B": false}
+	for id, w := range want {
+		if hasChildren[id] != w {
+			t.Errorf("%s.HasChildren = %v, 기대 = %v", id, hasChildren[id], w)
 		}
 	}
 }

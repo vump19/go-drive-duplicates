@@ -114,6 +114,8 @@ class PanelController {
             this.showFolderTreeLoading();
             // Load only 1 level initially for fast loading
             this.folderTree = await ExplorerAPI.getFolderTree('root', 1);
+            // Show the first level right away
+            this.folderTree.isExpanded = true;
             this.renderFolderTree(this.folderTree);
         } catch (error) {
             this.showError('Failed to load folder tree', error);
