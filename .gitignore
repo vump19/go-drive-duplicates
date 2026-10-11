@@ -52,3 +52,7 @@ ehthumbs.db
 # Temporary files
 *.tmp
 *.temp
+# Build outputs (make build / make build-migrate)
+/server
+/migrate
+/build/

@@ -81,24 +81,10 @@ type StorageProvider interface {
 
 // FileService defines the domain service for file operations
 type FileService interface {
-	// File management
-	ScanFiles(ctx context.Context, folderID string) ([]*entities.File, error)
-	ScanAllFiles(ctx context.Context) ([]*entities.File, error)
+	// RefreshFileMetadata fetches the latest metadata of a file from storage and stores it
 	RefreshFileMetadata(ctx context.Context, fileID string) (*entities.File, error)
-
-	// Path operations
+	// UpdateFilePaths stores the computed paths of the files
 	UpdateFilePaths(ctx context.Context, files []*entities.File) error
-	BuildFileTree(ctx context.Context, files []*entities.File) (map[string][]*entities.File, error)
-
-	// Cleanup operations
-	CleanupDeletedFiles(ctx context.Context) (int, error)
-	CleanupEmptyFolders(ctx context.Context) (int, error)
-
-	// Validation
+	// ValidateFileAccess checks that a file or folder exists and is accessible in storage
 	ValidateFileAccess(ctx context.Context, fileID string) error
-	CheckFileExists(ctx context.Context, fileID string) (bool, error)
-
-	// Statistics
-	GenerateFileStatistics(ctx context.Context) (*entities.FileStatistics, error)
-	GetStorageUsage(ctx context.Context) (used, total int64, err error)
 }

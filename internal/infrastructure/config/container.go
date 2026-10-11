@@ -506,53 +506,6 @@ func (fs *fileService) IsFileValid(file *entities.File) bool {
 	return fs.ValidateFile(file) == nil
 }
 
-func (fs *fileService) BuildFileTree(ctx context.Context, files []*entities.File) (map[string][]*entities.File, error) {
-	// Simple implementation: group files by parent folder
-	tree := make(map[string][]*entities.File)
-
-	for _, file := range files {
-		if len(file.Parents) > 0 {
-			parentID := file.Parents[0]
-			tree[parentID] = append(tree[parentID], file)
-		} else {
-			// Root level files
-			tree["root"] = append(tree["root"], file)
-		}
-	}
-
-	return tree, nil
-}
-
-func (fs *fileService) CheckFileExists(ctx context.Context, fileID string) (bool, error) {
-	// Simple stub implementation
-	file, err := fs.fileRepo.GetByID(ctx, fileID)
-	if err != nil {
-		return false, err
-	}
-	return file != nil, nil
-}
-
-func (fs *fileService) CleanupDeletedFiles(ctx context.Context) (int, error) {
-	// Simple stub implementation - in real implementation would clean up files marked as deleted
-	return 0, nil
-}
-
-func (fs *fileService) CleanupEmptyFolders(ctx context.Context) (int, error) {
-	// Simple stub implementation - in real implementation would clean up empty folders
-	return 0, nil
-}
-
-func (fs *fileService) GenerateFileStatistics(ctx context.Context) (*entities.FileStatistics, error) {
-	// Simple stub implementation - return empty statistics
-	stats := entities.NewFileStatistics()
-	return stats, nil
-}
-
-func (fs *fileService) GetStorageUsage(ctx context.Context) (used, total int64, err error) {
-	// Simple stub implementation - return 0 values
-	return 0, 0, nil
-}
-
 // RefreshFileMetadata fetches the latest metadata of the file from the storage provider and stores it.
 // A file that is not in the repository yet is added.
 func (fs *fileService) RefreshFileMetadata(ctx context.Context, fileID string) (*entities.File, error) {
@@ -574,18 +527,8 @@ func (fs *fileService) RefreshFileMetadata(ctx context.Context, fileID string) (
 	return file, nil
 }
 
-func (fs *fileService) ScanAllFiles(ctx context.Context) ([]*entities.File, error) {
-	// Simple stub implementation - return all files from repository
-	return fs.fileRepo.GetAll(ctx)
-}
-
-func (fs *fileService) ScanFiles(ctx context.Context, folderID string) ([]*entities.File, error) {
-	// Simple stub implementation - return files by folder
-	return fs.fileRepo.GetByParent(ctx, folderID)
-}
-
 func (fs *fileService) UpdateFilePaths(ctx context.Context, files []*entities.File) error {
-	// Simple stub implementation - update file paths
+	// update file paths
 	for _, file := range files {
 		err := fs.fileRepo.Update(ctx, file)
 		if err != nil {
@@ -619,49 +562,6 @@ type progressService struct {
 	notificationService services.NotificationService
 }
 
-func (ps *progressService) CreateProgress(operationType string, totalItems int) (*entities.Progress, error) {
-	progress := entities.NewProgress(operationType, totalItems)
-	return progress, nil
-}
-
-func (ps *progressService) UpdateProgress(progress *entities.Progress, processedItems int, currentStep string) {
-	progress.UpdateProgress(processedItems, currentStep)
-}
-
-func (ps *progressService) CompleteProgress(progress *entities.Progress) {
-	progress.Complete()
-}
-
-func (ps *progressService) FailProgress(progress *entities.Progress, err error) {
-	progress.Fail(err.Error())
-}
-
-func (ps *progressService) IsProgressActive(progress *entities.Progress) bool {
-	return progress.Status == "pending" || progress.Status == "running" || progress.Status == "in_progress"
-}
-
-func (ps *progressService) AddOperationLog(ctx context.Context, progressID int, message string) error {
-	// Simple stub implementation - in a real implementation this might update metadata
-	return nil
-}
-
-func (ps *progressService) AnalyzeOperationPerformance(ctx context.Context, operationType string, days int) (map[string]interface{}, error) {
-	// Simple stub implementation - return basic analysis
-	analysis := map[string]interface{}{
-		"operation_type": operationType,
-		"days":           days,
-		"total_runs":     0,
-		"avg_duration":   0.0,
-		"success_rate":   100.0,
-	}
-	return analysis, nil
-}
-
-func (ps *progressService) BroadcastProgress(ctx context.Context, progress *entities.Progress) error {
-	// Simple stub implementation - in real implementation would broadcast to websockets or channels
-	return nil
-}
-
 // CancelOperation marks the operation as cancelled in the database.
 // Stopping the running work itself is the caller's responsibility (e.g. cancelling its context).
 func (ps *progressService) CancelOperation(ctx context.Context, progressID int) error {
@@ -686,34 +586,6 @@ func (ps *progressService) CancelOperation(ctx context.Context, progressID int) 
 
 	log.Printf("⏹️ 작업 취소 처리 완료 - Progress ID: %d", progressID)
 	return nil
-}
-
-func (ps *progressService) CheckProgressHealth(ctx context.Context) (map[string]interface{}, error) {
-	// Simple stub implementation - return healthy status
-	health := map[string]interface{}{
-		"status":            "healthy",
-		"active_operations": 0,
-		"stuck_operations":  0,
-		"average_duration":  0.0,
-	}
-	return health, nil
-}
-
-func (ps *progressService) CleanupAllOldOperations(ctx context.Context, duration time.Duration) (int, error) {
-	// Simple stub implementation - convert duration to days and delegate to repository
-	days := int(duration.Hours() / 24)
-	return ps.progressRepo.DeleteOlderThan(ctx, days)
-}
-
-func (ps *progressService) CleanupCompletedOperations(ctx context.Context, duration time.Duration) (int, error) {
-	// Simple stub implementation - delete completed operations older than duration
-	// For now, just delete all completed operations
-	return ps.progressRepo.DeleteCompleted(ctx)
-}
-
-func (ps *progressService) CleanupFailedOperations(ctx context.Context, duration time.Duration) (int, error) {
-	// Simple stub implementation - delete failed operations older than duration
-	return ps.progressRepo.DeleteByStatus(ctx, "failed")
 }
 
 func (ps *progressService) CompleteOperation(ctx context.Context, progressID int) error {
@@ -813,134 +685,29 @@ func (ps *progressService) FailOperation(ctx context.Context, progressID int, er
 }
 
 func (ps *progressService) GetActiveOperations(ctx context.Context) ([]*entities.Progress, error) {
-	// Simple stub implementation - get active operations from repository
+	// get active operations from repository
 	return ps.progressRepo.GetActiveOperations(ctx)
 }
 
-func (ps *progressService) GetAverageCompletionTime(ctx context.Context, operationType string) (time.Duration, error) {
-	// Simple stub implementation - get seconds and convert to duration
-	seconds, err := ps.progressRepo.GetAverageCompletionTime(ctx, operationType)
-	if err != nil {
-		return 0, err
-	}
-	return time.Duration(seconds) * time.Second, nil
-}
-
-func (ps *progressService) GetBottlenecks(ctx context.Context, operationType string) ([]string, error) {
-	// Simple stub implementation - return empty bottlenecks for operation type
-	return []string{}, nil
-}
-
-func (ps *progressService) GetLongRunningOperations(ctx context.Context, minutes int) ([]*entities.Progress, error) {
-	// Simple stub implementation - delegate to repository
-	return ps.progressRepo.GetLongRunningOperations(ctx, minutes)
-}
-
-func (ps *progressService) GetOperationLogs(ctx context.Context, progressID int) ([]string, error) {
-	// Simple stub implementation - return empty logs
-	return []string{}, nil
-}
-
-func (ps *progressService) GetOperationMetadata(ctx context.Context, progressID int) (map[string]interface{}, error) {
-	// Simple stub implementation - return empty metadata
-	return make(map[string]interface{}), nil
-}
-
-func (ps *progressService) GetOperationStatistics(ctx context.Context) (map[string]interface{}, error) {
-	// Simple stub implementation - return basic statistics
-	stats := map[string]interface{}{
-		"total_operations":     0,
-		"active_operations":    0,
-		"completed_operations": 0,
-		"failed_operations":    0,
-	}
-	return stats, nil
-}
-
 func (ps *progressService) GetOperationsByType(ctx context.Context, operationType string) ([]*entities.Progress, error) {
-	// Simple stub implementation - delegate to repository
+	// delegate to repository
 	return ps.progressRepo.GetByOperationType(ctx, operationType)
 }
 
 func (ps *progressService) GetProgress(ctx context.Context, progressID int) (*entities.Progress, error) {
-	// Simple stub implementation - delegate to repository
+	// delegate to repository
 	return ps.progressRepo.GetByID(ctx, progressID)
 }
 
-func (ps *progressService) GetRecentOperations(ctx context.Context, limit int) ([]*entities.Progress, error) {
-	// Simple stub implementation - delegate to repository
-	return ps.progressRepo.GetRecentOperations(ctx, limit)
-}
-
-func (ps *progressService) GetStuckOperations(ctx context.Context, timeoutMinutes int) ([]*entities.Progress, error) {
-	// Simple stub implementation - delegate to repository
-	return ps.progressRepo.GetStuckOperations(ctx, timeoutMinutes)
-}
-
-func (ps *progressService) GetSuccessRate(ctx context.Context, operationType string, days int) (float64, error) {
-	// Simple stub implementation - return 100% success rate for operation type over days
-	return 100.0, nil
-}
-
-func (ps *progressService) MonitorOperations(ctx context.Context) error {
-	// Simple stub implementation - monitor operations
-	return nil
-}
-
-func (ps *progressService) NotifyProgressUpdate(ctx context.Context, progress *entities.Progress) error {
-	// Simple stub implementation - notify progress update
-	return nil
-}
-
-func (ps *progressService) OptimizeOperationParameters(ctx context.Context, operationType string) (map[string]interface{}, error) {
-	// Simple stub implementation - return default parameters
-	params := map[string]interface{}{
-		"worker_count":    4,
-		"batch_size":      100,
-		"timeout_minutes": 30,
-	}
-	return params, nil
-}
-
-func (ps *progressService) PauseOperation(ctx context.Context, progressID int) error {
-	// Simple stub implementation - pause operation
-	return nil
-}
-
-func (ps *progressService) ResumeOperation(ctx context.Context, progressID int) error {
-	// Simple stub implementation - resume operation
-	return nil
-}
-
-func (ps *progressService) RecoverCorruptedProgress(ctx context.Context, progressID int) error {
-	// Simple stub implementation - recover corrupted progress for specific ID
-	return nil
-}
-
-func (ps *progressService) RegisterProgressCallback(operationType string, callback func(*entities.Progress)) error {
-	// Simple stub implementation - register progress callback for operation type
-	return nil
-}
-
-func (ps *progressService) UnregisterProgressCallback(operationType string) error {
-	// Simple stub implementation - unregister progress callback for operation type
-	return nil
-}
-
-func (ps *progressService) SaveProgress(ctx context.Context, progress *entities.Progress) error {
-	// Simple stub implementation - save progress
-	return ps.progressRepo.Save(ctx, progress)
-}
-
 func (ps *progressService) StartOperation(ctx context.Context, operationType string, totalItems int) (*entities.Progress, error) {
-	// Simple stub implementation - start operation
+	// start operation
 	progress := entities.NewProgress(operationType, totalItems)
 	err := ps.progressRepo.Save(ctx, progress)
 	return progress, err
 }
 
 func (ps *progressService) UpdateOperation(ctx context.Context, progressID int, processedItems int, currentStep string) error {
-	// Simple stub implementation - update operation
+	// update operation
 	progress, err := ps.progressRepo.GetByID(ctx, progressID)
 	if err != nil {
 		return err
@@ -968,28 +735,4 @@ func (ps *progressService) SetOperationMetadata(ctx context.Context, progressID 
 		return ps.progressRepo.Update(ctx, progress)
 	}
 	return nil
-}
-
-func (ps *progressService) ValidateProgress(ctx context.Context, progressID int) error {
-	// Simple stub implementation - validate progress
-	return nil
-}
-
-func (ps *progressService) ValidateProgressData(ctx context.Context, progressID int) error {
-	// Simple stub implementation - validate progress data
-	return nil
-}
-
-func (ps *progressService) StreamProgress(ctx context.Context, progressID int) (<-chan *entities.Progress, error) {
-	// Simple stub implementation - stream progress updates
-	ch := make(chan *entities.Progress)
-	close(ch) // Immediately close for stub
-	return ch, nil
-}
-
-func (ps *progressService) StreamOperationsByType(ctx context.Context, operationType string) (<-chan *entities.Progress, error) {
-	// Simple stub implementation - stream operations by type
-	ch := make(chan *entities.Progress)
-	close(ch) // Immediately close for stub
-	return ch, nil
 }
