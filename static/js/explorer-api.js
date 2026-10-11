@@ -81,8 +81,8 @@ function parseExplorerValue(valueStr) {
     return valueStr.replace(/['\"]/g, '');
 }
 
-// 설정 로드 (페이지 로드 시 실행)
-loadExplorerConfig();
+// 설정 로드 (페이지 로드 시 실행). 앱 초기화 전에 explorerConfigReady를 기다려야 함
+const explorerConfigReady = loadExplorerConfig();
 
 const ExplorerAPI = {
     // Base URL getter - 동적으로 설정된 값 사용
@@ -637,17 +637,21 @@ const ExplorerDBAPI = {
         return `${EXPLORER_API_BASE}/api/files/db`;
     },
 
+    FOLDER_MIME_TYPE: 'application/vnd.google-apps.folder',
+
     /**
-     * Get folder tree from database
-     * @param {string} parentId - Parent folder ID
-     * @param {number} depth - Maximum depth
-     * @returns {Promise<Object>} Folder tree
+     * Get folder tree from database, in the same shape as ExplorerAPI.getFolderTree
+     * ({id, name, path, children, hasChildren}).
+     * @param {string} folderId - Folder ID ('root' for My Drive)
+     * @param {number} depth - Levels of children to include
+     * @returns {Promise<Object>} Folder tree node
      */
-    async getFolderTree(parentId = 'root', depth = 3) {
+    async getFolderTree(folderId = 'root', depth = 1) {
         try {
+            // Fetch one extra level so the deepest nodes know whether they have children
             const params = new URLSearchParams({
-                parentId: parentId,
-                depth: depth.toString()
+                parentId: folderId,
+                depth: (depth + 1).toString()
             });
 
             const response = await fetch(`${this.baseURL}/tree?${params}`);
@@ -656,7 +660,16 @@ const ExplorerDBAPI = {
                 throw new Error(`Failed to fetch DB folder tree: ${response.statusText}`);
             }
 
-            return await response.json();
+            const tree = await response.json();
+            const children = this.toFolderNodes(tree.folders || [], depth);
+            return {
+                id: tree.parentId || folderId,
+                name: folderId === 'root' ? 'My Drive' : (tree.name || folderId),
+                path: '',
+                children: children,
+                hasChildren: children.length > 0,
+                subfolderCount: children.length
+            };
         } catch (error) {
             console.error('Error fetching DB folder tree:', error);
             throw error;
@@ -664,14 +677,33 @@ const ExplorerDBAPI = {
     },
 
     /**
-     * List files from database
-     * @param {string} parentId - Parent folder ID
-     * @returns {Promise<Object>} File list
+     * Convert DB tree folders to folder nodes, keeping `depth` levels of children.
      */
-    async listFiles(parentId = 'root') {
+    toFolderNodes(folders, depth) {
+        return folders.map(folder => {
+            const subfolders = (folder.children && folder.children.folders) || [];
+            return {
+                id: folder.id,
+                name: folder.name,
+                path: folder.path || '',
+                children: depth > 1 ? this.toFolderNodes(subfolders, depth - 1) : [],
+                hasChildren: subfolders.length > 0,
+                subfolderCount: subfolders.length
+            };
+        });
+    },
+
+    /**
+     * List folder contents from database, in the same shape as ExplorerAPI.listFolderContents
+     * ({items, nextPageToken}). Search is applied on the client; there is no pagination.
+     * @param {string} folderId - Folder ID ('root' for My Drive)
+     * @param {Object} options - List options (searchQuery is supported)
+     * @returns {Promise<Object>} File list response
+     */
+    async listFolderContents(folderId = 'root', options = {}) {
         try {
             const params = new URLSearchParams({
-                parentId: parentId
+                parentId: folderId
             });
 
             const response = await fetch(`${this.baseURL}/list?${params}`);
@@ -680,7 +712,16 @@ const ExplorerDBAPI = {
                 throw new Error(`Failed to fetch DB file list: ${response.statusText}`);
             }
 
-            return await response.json();
+            const data = await response.json();
+            const search = (options.searchQuery || '').toLowerCase();
+            const items = (data.files || [])
+                .filter(file => !search || file.name.toLowerCase().includes(search))
+                .map(file => ({
+                    ...file,
+                    isFolder: file.mimeType === this.FOLDER_MIME_TYPE
+                }));
+
+            return { items: items, nextPageToken: null };
         } catch (error) {
             console.error('Error fetching DB file list:', error);
             throw error;

@@ -596,7 +596,7 @@ func (g *GoogleDriveAdapter) SearchFilesWithOptions(ctx context.Context, query s
 	}
 
 	// Build search query for Google Drive
-	driveQuery := fmt.Sprintf("name contains '%s' and trashed = false", query)
+	driveQuery := fmt.Sprintf("name contains '%s' and trashed = false", entities.EscapeDriveQueryValue(query))
 
 	call := g.service.Files.List().
 		Q(driveQuery).
@@ -775,7 +775,7 @@ func (g *GoogleDriveAdapter) SearchByMimeType(ctx context.Context, mimeType stri
 }
 
 func (g *GoogleDriveAdapter) SearchByName(ctx context.Context, name string) ([]*entities.File, error) {
-	query := fmt.Sprintf("name contains '%s'", name)
+	query := fmt.Sprintf("name contains '%s'", entities.EscapeDriveQueryValue(name))
 	return g.SearchFiles(ctx, query)
 }
 

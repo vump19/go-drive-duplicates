@@ -113,7 +113,7 @@ class PanelController {
         try {
             this.showFolderTreeLoading();
             // Load only 1 level initially for fast loading
-            this.folderTree = await ExplorerAPI.getFolderTree('root', 1);
+            this.folderTree = await getCurrentAPI().getFolderTree('root', 1);
             // Show the first level right away
             this.folderTree.isExpanded = true;
             this.renderFolderTree(this.folderTree);
@@ -146,7 +146,7 @@ class PanelController {
                 options.searchQuery = this.searchQuery;
             }
 
-            const response = await ExplorerAPI.listFolderContents(this.currentFolderId, options);
+            const response = await getCurrentAPI().listFolderContents(this.currentFolderId, options);
 
             // Store the input token used to load this page
             this.currentInputPageToken = pageToken;
@@ -301,7 +301,7 @@ class PanelController {
 
             try {
                 // Load subfolder tree for this folder
-                const subTree = await ExplorerAPI.getFolderTree(node.id, 1);
+                const subTree = await getCurrentAPI().getFolderTree(node.id, 1);
 
                 // Add children to the node
                 if (subTree && subTree.children) {

@@ -2,6 +2,7 @@ package entities
 
 import (
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -228,6 +229,12 @@ func (opts *ListOptions) Validate() error {
 	return nil
 }
 
+// EscapeDriveQueryValue escapes a value for use inside a single-quoted string in a
+// Google Drive API query (backslashes and single quotes must be backslash-escaped).
+func EscapeDriveQueryValue(value string) string {
+	return strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(value)
+}
+
 // BuildGoogleDriveQuery builds a Google Drive API query string from options
 func (opts *ListOptions) BuildGoogleDriveQuery(parentFolderID string) string {
 	query := "'" + parentFolderID + "' in parents"
@@ -245,7 +252,7 @@ func (opts *ListOptions) BuildGoogleDriveQuery(parentFolderID string) string {
 	}
 
 	if opts.SearchQuery != "" {
-		query += " and name contains '" + opts.SearchQuery + "'"
+		query += " and name contains '" + EscapeDriveQueryValue(opts.SearchQuery) + "'"
 	}
 
 	if len(opts.FileTypes) > 0 {

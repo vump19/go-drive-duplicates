@@ -207,3 +207,27 @@ func TestListFoldersRecursive_ReportsSubfoldersAtMaxDepth(t *testing.T) {
 		}
 	}
 }
+
+func TestSearchFilesWithOptions_EscapesQuery(t *testing.T) {
+	var gotQ string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQ = r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"files":[]}`))
+	}))
+	defer server.Close()
+
+	service, err := drive.NewService(context.Background(),
+		option.WithEndpoint(server.URL+"/"), option.WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("Drive 서비스 생성 실패: %v", err)
+	}
+	adapter := &GoogleDriveAdapter{service: service}
+
+	if _, err := adapter.SearchFilesWithOptions(context.Background(), "John's", nil); err != nil {
+		t.Fatalf("SearchFilesWithOptions 실패: %v", err)
+	}
+	if !strings.HasPrefix(gotQ, `name contains 'John\'s'`) {
+		t.Errorf("q = %q, 작은따옴표가 이스케이프되지 않음", gotQ)
+	}
+}

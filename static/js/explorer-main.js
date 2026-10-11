@@ -642,22 +642,32 @@ function toggleDBMode() {
         console.log('✅ Live 모드 활성화: Google Drive API 직접 조회');
     }
 
-    // Reload panels with new mode
+    // Reload both panels from the root: folder tree and contents come from the new source
     if (window.explorerApp) {
-        window.explorerApp.leftPanel.refresh();
-        window.explorerApp.rightPanel.refresh();
+        [window.explorerApp.leftPanel, window.explorerApp.rightPanel].forEach(async panel => {
+            try {
+                await panel.loadFolderTree();
+                await panel.navigateToFolder('root');
+            } catch (error) {
+                console.error('모드 전환 후 패널 로드 실패:', error);
+            }
+        });
     }
 }
 
 /**
- * Get current API based on mode
+ * Get the API used for browsing (folder tree, file list) based on mode.
+ * File operations (copy, move, trash, create folder) always use the live ExplorerAPI.
  */
 function getCurrentAPI() {
     return isDBMode ? window.ExplorerDBAPI : window.ExplorerAPI;
 }
 
 // Initialize the application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for the backend URL from config/frontend.yaml before the first API call
+    await explorerConfigReady;
+
     const app = new ExplorerApp();
     app.initialize();
 
