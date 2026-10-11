@@ -44,6 +44,7 @@ go run cmd/server/main.go                      # 서버 실행
 go build -o go-drive-duplicates cmd/server/main.go  # 빌드
 go fmt ./...                                   # 포맷팅
 go vet ./...                                   # 검증
+go test ./...                                  # 테스트 (make test)
 ```
 
 ### 프론트엔드
