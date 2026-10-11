@@ -304,7 +304,7 @@ func (g *GoogleDriveAdapter) GetFile(ctx context.Context, fileID string) (*entit
 	// 재시도 로직 적용
 	for attempt := 0; attempt <= g.maxRetries; attempt++ {
 		driveFile, err = g.service.Files.Get(fileID).
-			Fields("id, name, size, mimeType, modifiedTime, parents, webViewLink").
+			Fields("id, name, size, mimeType, modifiedTime, parents, webViewLink, md5Checksum").
 			Context(ctx).Do()
 		if err == nil {
 			break

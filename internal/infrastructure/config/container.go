@@ -471,8 +471,9 @@ func (fs *fileService) ValidateFile(file *entities.File) error {
 }
 
 // EnrichFileMetadata refreshes the file's metadata with the latest values from the storage provider.
-// Path is computed locally and kept as is. A previously calculated hash is cleared when the file
-// content may have changed (size or modified time differs), so it gets recalculated.
+// Path is computed locally and kept as is. The hash is replaced only when the file has no hash yet
+// or its content may have changed (size or modified time differs); if the provider returns no hash
+// in that case, it is cleared so it gets recalculated.
 func (fs *fileService) EnrichFileMetadata(ctx context.Context, file *entities.File) error {
 	if file == nil || file.ID == "" {
 		return fmt.Errorf("file ID is required")
@@ -492,12 +493,9 @@ func (fs *fileService) EnrichFileMetadata(ctx context.Context, file *entities.Fi
 	file.Parents = latest.Parents
 	file.WebViewLink = latest.WebViewLink
 
-	if latest.HashCalculated {
+	if contentChanged || !file.HashCalculated {
 		file.Hash = latest.Hash
-		file.HashCalculated = true
-	} else if contentChanged {
-		file.Hash = ""
-		file.HashCalculated = false
+		file.HashCalculated = latest.HashCalculated
 	}
 
 	file.LastUpdated = time.Now()
@@ -555,9 +553,25 @@ func (fs *fileService) GetStorageUsage(ctx context.Context) (used, total int64, 
 	return 0, 0, nil
 }
 
+// RefreshFileMetadata fetches the latest metadata of the file from the storage provider and stores it.
+// A file that is not in the repository yet is added.
 func (fs *fileService) RefreshFileMetadata(ctx context.Context, fileID string) (*entities.File, error) {
-	// Simple stub implementation - just get existing file
-	return fs.fileRepo.GetByID(ctx, fileID)
+	file, err := fs.fileRepo.GetByID(ctx, fileID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load file: %w", err)
+	}
+	if file == nil {
+		file = &entities.File{ID: fileID}
+	}
+
+	if err := fs.EnrichFileMetadata(ctx, file); err != nil {
+		return nil, err
+	}
+
+	if err := fs.fileRepo.Save(ctx, file); err != nil {
+		return nil, fmt.Errorf("failed to save file metadata: %w", err)
+	}
+	return file, nil
 }
 
 func (fs *fileService) ScanAllFiles(ctx context.Context) ([]*entities.File, error) {
