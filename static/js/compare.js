@@ -1080,10 +1080,13 @@ async function loadPendingComparisons() {
             for (const p of pending) {
                 const meta = p.metadata || {};
                 const jobId = JobManager.nextLocalId++;
+                const isSingleFolder = p.operationType === 'single_folder_duplicates' || meta.type === 'single-folder';
                 const job = {
                     id: jobId,
-                    type: meta.type === 'single-folder' ? 'single-folder' : 'comparison',
-                    status: 'running',
+                    type: isSingleFolder ? 'single-folder' : 'comparison',
+                    // 서버 재시작으로 중단된 작업은 실패 상태로 표시
+                    status: p.status === 'failed' ? 'failed' : 'running',
+                    errorMessage: p.errorMessage,
                     sourceFolderId: meta.sourceFolderId,
                     targetFolderId: meta.targetFolderId,
                     sourceFolderName: meta.sourceFolderId ? meta.sourceFolderId.substring(0, 12) + '...' : '-',

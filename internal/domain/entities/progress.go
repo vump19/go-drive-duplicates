@@ -41,12 +41,13 @@ const (
 
 // OperationType constants
 const (
-	OperationFileScan           = "file_scan"
-	OperationDuplicateSearch    = "duplicate_search"
-	OperationFolderComparison   = "folder_comparison"
-	OperationHashCalculation    = "hash_calculation"
-	OperationFileCleanup        = "file_cleanup"
-	OperationValidateDuplicates = "validate_duplicates"
+	OperationFileScan               = "file_scan"
+	OperationDuplicateSearch        = "duplicate_search"
+	OperationFolderComparison       = "folder_comparison"
+	OperationHashCalculation        = "hash_calculation"
+	OperationFileCleanup            = "file_cleanup"
+	OperationValidateDuplicates     = "validate_duplicates"
+	OperationSingleFolderDuplicates = "single_folder_duplicates"
 )
 
 // NewProgress creates a new progress tracker

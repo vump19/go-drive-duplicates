@@ -34,6 +34,9 @@ type FolderComparisonUseCase struct {
 	// Cancellation management
 	runningOps   map[int]context.CancelFunc
 	runningOpsMu sync.RWMutex
+
+	// 이 프로세스의 시작 시각 (이전 서버 프로세스에서 중단된 작업 판별용)
+	startedAt time.Time
 }
 
 // NewFolderComparisonUseCase creates a new folder comparison use case
@@ -59,6 +62,7 @@ func NewFolderComparisonUseCase(
 		deepComparison:    true,
 		minFileSize:       0,
 		runningOps:        make(map[int]context.CancelFunc),
+		startedAt:         time.Now(),
 	}
 }
 
@@ -291,16 +295,52 @@ func (uc *FolderComparisonUseCase) resumeComparison(ctx context.Context, req *Co
 	return response, nil
 }
 
-// GetPendingComparisons returns all pending/failed comparison operations
+// GetPendingComparisons returns in-progress folder comparison and single-folder duplicate search operations.
+// Operations left pending/running by a previous server process are marked as failed and
+// returned once, so the UI can show why they stopped instead of polling them forever.
 func (uc *FolderComparisonUseCase) GetPendingComparisons(ctx context.Context) ([]*entities.Progress, error) {
-	// For now, return empty list - this can be implemented later when needed
-	log.Printf("📋 중단된 작업 조회 요청 (현재 미구현)")
-	return []*entities.Progress{}, nil
+	activeOps, err := uc.progressRepo.GetActiveOperations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("진행 중 작업 조회 실패: %w", err)
+	}
+
+	pending := make([]*entities.Progress, 0)
+	for _, op := range activeOps {
+		if op.OperationType != entities.OperationFolderComparison &&
+			op.OperationType != entities.OperationSingleFolderDuplicates {
+			continue
+		}
+
+		if uc.isOrphanedOperation(op) {
+			const reason = "서버 재시작으로 작업이 중단되었습니다"
+			if err := uc.progressService.FailOperation(ctx, op.ID, reason); err != nil {
+				log.Printf("⚠️ 중단된 작업 상태 갱신 실패 (Progress ID %d): %v", op.ID, err)
+				continue
+			}
+			op.Fail(reason)
+			log.Printf("⚠️ 이전 서버 프로세스에서 중단된 작업을 실패 처리: Progress ID %d (%s)", op.ID, op.OperationType)
+		}
+
+		pending = append(pending, op)
+	}
+
+	log.Printf("📋 진행 중 비교 작업 조회: %d개", len(pending))
+	return pending, nil
+}
+
+// isOrphanedOperation reports whether an active operation was started by a previous server
+// process and has no goroutine running it in this process.
+func (uc *FolderComparisonUseCase) isOrphanedOperation(op *entities.Progress) bool {
+	uc.runningOpsMu.RLock()
+	_, tracked := uc.runningOps[op.ID]
+	uc.runningOpsMu.RUnlock()
+
+	return !tracked && op.StartTime.Before(uc.startedAt)
 }
 
 // GetRecentSingleFolderResults returns recent completed single-folder duplicate search results
 func (uc *FolderComparisonUseCase) GetRecentSingleFolderResults(ctx context.Context, limit int) ([]*entities.Progress, error) {
-	allOps, err := uc.progressRepo.GetByOperationType(ctx, "single_folder_duplicates")
+	allOps, err := uc.progressRepo.GetByOperationType(ctx, entities.OperationSingleFolderDuplicates)
 	if err != nil {
 		return nil, err
 	}
@@ -1950,7 +1990,7 @@ func (uc *FolderComparisonUseCase) FindDuplicatesInSingleFolder(ctx context.Cont
 	log.Printf("📁 단일 폴더 내 중복 파일 검색 시작: %s", req.FolderID)
 
 	// Create progress tracker
-	progress, err := uc.progressService.StartOperation(ctx, "single_folder_duplicates", 0)
+	progress, err := uc.progressService.StartOperation(ctx, entities.OperationSingleFolderDuplicates, 0)
 	if err != nil {
 		return nil, fmt.Errorf("진행 상황 생성 실패: %w", err)
 	}
