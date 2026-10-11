@@ -33,10 +33,10 @@ func NewAudioConversionUseCase(storageProvider services.StorageProvider) *AudioC
 
 // AudioConversionOptions represents options for audio conversion
 type AudioConversionOptions struct {
-	OutputFormat      string   `json:"outputFormat"`      // mp3, wav, flac, aac, ogg, wma, m4a
-	Bitrate           string   `json:"bitrate"`           // 128k, 192k, 256k, 320k (empty = default)
-	SampleRate        string   `json:"sampleRate"`        // 44100, 48000 (empty = keep original)
-	OutputFolderID    string   `json:"outputFolderId"`    // empty = same folder as original
+	OutputFormat      string   `json:"outputFormat"`   // mp3, wav, flac, aac, ogg, wma, m4a
+	Bitrate           string   `json:"bitrate"`        // 128k, 192k, 256k, 320k (empty = default)
+	SampleRate        string   `json:"sampleRate"`     // 44100, 48000 (empty = keep original)
+	OutputFolderID    string   `json:"outputFolderId"` // empty = same folder as original
 	OutputFolderURL   string   `json:"outputFolderUrl"`
 	DeleteOriginal    bool     `json:"deleteOriginal"`    // delete original after conversion
 	IncludeSubfolders bool     `json:"includeSubfolders"` // include subfolders

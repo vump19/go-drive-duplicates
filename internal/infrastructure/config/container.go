@@ -49,36 +49,36 @@ type Container struct {
 	NotificationService services.NotificationService
 
 	// Use Cases
-	FileScanningUseCase      *usecases.FileScanningUseCase
-	DuplicateFindingUseCase  *usecases.DuplicateFindingUseCase
-	FolderComparisonUseCase  *usecases.FolderComparisonUseCase
-	FileCleanupUseCase       *usecases.FileCleanupUseCase
-	FolderAnalysisUseCase    *usecases.FolderAnalysisUseCase
-	VerifiedDuplicateUseCase *usecases.VerifiedDuplicateUseCase
-	FileExplorerUseCase      *usecases.FileExplorerUseCase
-	FolderDownloadUseCase    *usecases.FolderDownloadUseCase
-	BatchArchiveUseCase              *usecases.BatchArchiveUseCase
-	FolderExportUseCase              *usecases.FolderExportUseCase
-	DocumentConsolidationUseCase     *usecases.DocumentConsolidationUseCase
-	SmartOrganizerUseCase            *usecases.SmartOrganizerUseCase
-	SharingManagerUseCase            *usecases.SharingManagerUseCase
-	AudioConversionUseCase           *usecases.AudioConversionUseCase
+	FileScanningUseCase          *usecases.FileScanningUseCase
+	DuplicateFindingUseCase      *usecases.DuplicateFindingUseCase
+	FolderComparisonUseCase      *usecases.FolderComparisonUseCase
+	FileCleanupUseCase           *usecases.FileCleanupUseCase
+	FolderAnalysisUseCase        *usecases.FolderAnalysisUseCase
+	VerifiedDuplicateUseCase     *usecases.VerifiedDuplicateUseCase
+	FileExplorerUseCase          *usecases.FileExplorerUseCase
+	FolderDownloadUseCase        *usecases.FolderDownloadUseCase
+	BatchArchiveUseCase          *usecases.BatchArchiveUseCase
+	FolderExportUseCase          *usecases.FolderExportUseCase
+	DocumentConsolidationUseCase *usecases.DocumentConsolidationUseCase
+	SmartOrganizerUseCase        *usecases.SmartOrganizerUseCase
+	SharingManagerUseCase        *usecases.SharingManagerUseCase
+	AudioConversionUseCase       *usecases.AudioConversionUseCase
 
 	// Controllers
-	FileController              *controllers.FileController
-	DuplicateController         *controllers.DuplicateController
-	ComparisonController        *controllers.ComparisonController
-	CleanupController           *controllers.CleanupController
-	FolderAnalysisController    *controllers.FolderAnalysisController
-	VerifiedDuplicateController *controllers.VerifiedDuplicateController
-	FileExplorerController      *controllers.FileExplorerController
-	FolderDownloadController    *controllers.FolderDownloadController
-	BatchArchiveController              *controllers.BatchArchiveController
-	FolderExportController              *controllers.FolderExportController
-	DocumentConsolidationController     *controllers.DocumentConsolidationController
-	SmartOrganizerController            *controllers.SmartOrganizerController
-	SharingController                   *controllers.SharingController
-	AudioConversionController           *controllers.AudioConversionController
+	FileController                  *controllers.FileController
+	DuplicateController             *controllers.DuplicateController
+	ComparisonController            *controllers.ComparisonController
+	CleanupController               *controllers.CleanupController
+	FolderAnalysisController        *controllers.FolderAnalysisController
+	VerifiedDuplicateController     *controllers.VerifiedDuplicateController
+	FileExplorerController          *controllers.FileExplorerController
+	FolderDownloadController        *controllers.FolderDownloadController
+	BatchArchiveController          *controllers.BatchArchiveController
+	FolderExportController          *controllers.FolderExportController
+	DocumentConsolidationController *controllers.DocumentConsolidationController
+	SmartOrganizerController        *controllers.SmartOrganizerController
+	SharingController               *controllers.SharingController
+	AudioConversionController       *controllers.AudioConversionController
 }
 
 // NewContainer creates and initializes a new dependency injection container

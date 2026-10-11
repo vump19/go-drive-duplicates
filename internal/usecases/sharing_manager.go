@@ -103,7 +103,7 @@ type PermissionChangeJob struct {
 // PermissionChangeRequest represents a request to change permissions
 type PermissionChangeRequest struct {
 	FileIDs     []string `json:"fileIds"`
-	Action      string   `json:"action"`           // "remove" or "changeRole"
+	Action      string   `json:"action"`            // "remove" or "changeRole"
 	TargetEmail string   `json:"targetEmail"`       // email to match
 	NewRole     string   `json:"newRole,omitempty"` // for changeRole action
 }

@@ -82,10 +82,10 @@ type OrganizePreviewItem struct {
 
 // OrganizePreviewResult - 미리보기 결과
 type OrganizePreviewResult struct {
-	TotalFiles    int                   `json:"totalFiles"`
-	MatchedFiles  int                   `json:"matchedFiles"`
-	UnmatchedFiles int                  `json:"unmatchedFiles"`
-	Items         []OrganizePreviewItem `json:"items"`
+	TotalFiles     int                   `json:"totalFiles"`
+	MatchedFiles   int                   `json:"matchedFiles"`
+	UnmatchedFiles int                   `json:"unmatchedFiles"`
+	Items          []OrganizePreviewItem `json:"items"`
 }
 
 // NewSmartOrganizerUseCase creates a new SmartOrganizerUseCase

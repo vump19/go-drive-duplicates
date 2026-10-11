@@ -21,8 +21,8 @@ func NewAudioConversionController(audioConversionUseCase *usecases.AudioConversi
 
 // AudioConversionRequest represents the request to start audio conversion
 type AudioConversionRequest struct {
-	FolderURL string                          `json:"folderUrl"`
-	FolderID  string                          `json:"folderId"`
+	FolderURL string                           `json:"folderUrl"`
+	FolderID  string                           `json:"folderId"`
 	Options   *usecases.AudioConversionOptions `json:"options"`
 }
 

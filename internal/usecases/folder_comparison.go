@@ -1492,7 +1492,7 @@ func (uc *FolderComparisonUseCase) cleanupEmptyFolders(ctx context.Context, fold
 	}
 
 	emptyCache := make(map[string]bool)     // folderID -> isEmpty
-	emptyCheckErr := make(map[string]error)  // folderID -> error
+	emptyCheckErr := make(map[string]error) // folderID -> error
 	deletedSet := make(map[string]bool)
 
 	// Batch empty checks with bounded concurrency

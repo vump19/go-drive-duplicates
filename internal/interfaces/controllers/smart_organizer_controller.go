@@ -29,7 +29,7 @@ func NewSmartOrganizerController(uc *usecases.SmartOrganizerUseCase) *SmartOrgan
 
 // aiProviderRequest - 프론트엔드에서 전달하는 AI 프로바이더 설정
 type aiProviderRequest struct {
-	Name   string `json:"name"`   // claude, openai, gemini
+	Name   string `json:"name"` // claude, openai, gemini
 	APIKey string `json:"apiKey"`
 	Model  string `json:"model"`
 }
@@ -78,10 +78,10 @@ func (c *SmartOrganizerController) Chat(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req struct {
-		SessionID     string               `json:"sessionId"`
-		Message       string               `json:"message"`
-		FolderContext string               `json:"folderContext"`
-		AIProviders   []aiProviderRequest  `json:"aiProviders,omitempty"`
+		SessionID     string              `json:"sessionId"`
+		Message       string              `json:"message"`
+		FolderContext string              `json:"folderContext"`
+		AIProviders   []aiProviderRequest `json:"aiProviders,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "잘못된 요청 형식입니다", http.StatusBadRequest)

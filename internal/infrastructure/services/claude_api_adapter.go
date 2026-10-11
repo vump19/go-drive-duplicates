@@ -39,10 +39,10 @@ func NewClaudeAPIAdapter(apiKey, model string) *ClaudeAPIAdapter {
 
 // claudeRequest - Claude API 요청 구조체
 type claudeRequest struct {
-	Model     string           `json:"model"`
-	MaxTokens int              `json:"max_tokens"`
-	System    string           `json:"system,omitempty"`
-	Messages  []claudeMessage  `json:"messages"`
+	Model     string          `json:"model"`
+	MaxTokens int             `json:"max_tokens"`
+	System    string          `json:"system,omitempty"`
+	Messages  []claudeMessage `json:"messages"`
 }
 
 type claudeMessage struct {

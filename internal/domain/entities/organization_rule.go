@@ -16,12 +16,12 @@ type RuleCondition struct {
 type OrganizationRule struct {
 	ID          int       `json:"id"`
 	RuleSetID   int       `json:"ruleSetId"`
-	Priority    int       `json:"priority"`    // 낮을수록 먼저 적용
+	Priority    int       `json:"priority"` // 낮을수록 먼저 적용
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Conditions  string    `json:"conditions"`  // JSON: [{field, operator, value}]
-	Action      string    `json:"action"`      // move, copy
-	TargetPath  string    `json:"targetPath"`  // 대상 폴더 경로/ID
+	Conditions  string    `json:"conditions"` // JSON: [{field, operator, value}]
+	Action      string    `json:"action"`     // move, copy
+	TargetPath  string    `json:"targetPath"` // 대상 폴더 경로/ID
 	Enabled     bool      `json:"enabled"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
@@ -49,15 +49,15 @@ func (r *OrganizationRule) SetConditions(conditions []RuleCondition) error {
 
 // OrganizationRuleSet - 규칙 세트 (여러 규칙 그룹)
 type OrganizationRuleSet struct {
-	ID           int                 `json:"id"`
-	Name         string              `json:"name"`
-	Description  string              `json:"description"`
-	WatchFolder  string              `json:"watchFolder"`  // 감시 대상 폴더 ID
-	IsActive     bool                `json:"isActive"`
-	BackupFileID string              `json:"backupFileId"` // Google Drive JSON 백업 파일 ID
-	CreatedAt    time.Time           `json:"createdAt"`
-	UpdatedAt    time.Time           `json:"updatedAt"`
-	Rules        []OrganizationRule  `json:"rules,omitempty"` // DB에서 별도 조회
+	ID           int                `json:"id"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	WatchFolder  string             `json:"watchFolder"` // 감시 대상 폴더 ID
+	IsActive     bool               `json:"isActive"`
+	BackupFileID string             `json:"backupFileId"` // Google Drive JSON 백업 파일 ID
+	CreatedAt    time.Time          `json:"createdAt"`
+	UpdatedAt    time.Time          `json:"updatedAt"`
+	Rules        []OrganizationRule `json:"rules,omitempty"` // DB에서 별도 조회
 }
 
 // RuleSuggestion - AI가 제안하는 규칙
@@ -65,6 +65,6 @@ type RuleSuggestion struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	Conditions  []RuleCondition `json:"conditions"`
-	Action      string          `json:"action"`    // move, copy
+	Action      string          `json:"action"` // move, copy
 	TargetPath  string          `json:"targetPath"`
 }

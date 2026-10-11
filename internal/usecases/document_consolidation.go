@@ -63,15 +63,15 @@ type OutputFileInfo struct {
 
 // ConsolidationJob represents an active consolidation job
 type ConsolidationJob struct {
-	ID        string               `json:"jobId"`
-	Status    string               `json:"status"` // running, completed, failed, cancelled
-	Phase     string               `json:"phase"`  // scanning, downloading, deduplicating, merging, uploading, completed
-	Message   string               `json:"message"`
+	ID        string                 `json:"jobId"`
+	Status    string                 `json:"status"` // running, completed, failed, cancelled
+	Phase     string                 `json:"phase"`  // scanning, downloading, deduplicating, merging, uploading, completed
+	Message   string                 `json:"message"`
 	Progress  *ConsolidationProgress `json:"progress"`
 	Result    *ConsolidationResult   `json:"result,omitempty"`
-	Error     string               `json:"error,omitempty"`
-	StartTime time.Time            `json:"startTime"`
-	EndTime   time.Time            `json:"endTime,omitempty"`
+	Error     string                 `json:"error,omitempty"`
+	StartTime time.Time              `json:"startTime"`
+	EndTime   time.Time              `json:"endTime,omitempty"`
 
 	// 내부 사용
 	cancelFunc context.CancelFunc
@@ -101,20 +101,20 @@ type TextFileEntry struct {
 
 // 텍스트 MIME 타입 목록
 var textMimeTypes = map[string]bool{
-	"text/plain":                        true, // .txt, .log
-	"text/csv":                          true, // .csv
-	"text/markdown":                     true, // .md
-	"text/xml":                          true, // .xml
-	"application/json":                  true, // .json
-	"application/xml":                   true, // .xml
-	"text/html":                         true, // .html
-	"text/x-python":                     true, // .py
-	"text/x-java-source":               true, // .java
-	"application/javascript":            true, // .js
-	"application/x-yaml":               true, // .yaml
-	"text/yaml":                         true, // .yaml
-	"text/x-shellscript":               true, // .sh
-	"application/x-sh":                 true, // .sh
+	"text/plain":             true, // .txt, .log
+	"text/csv":               true, // .csv
+	"text/markdown":          true, // .md
+	"text/xml":               true, // .xml
+	"application/json":       true, // .json
+	"application/xml":        true, // .xml
+	"text/html":              true, // .html
+	"text/x-python":          true, // .py
+	"text/x-java-source":     true, // .java
+	"application/javascript": true, // .js
+	"application/x-yaml":     true, // .yaml
+	"text/yaml":              true, // .yaml
+	"text/x-shellscript":     true, // .sh
+	"application/x-sh":       true, // .sh
 }
 
 // 텍스트 파일 확장자 목록 (MIME 타입이 없거나 부정확한 경우 사용)
@@ -142,12 +142,12 @@ func (uc *DocumentConsolidationUseCase) StartConsolidation(
 	// Create job
 	jobCtx, cancel := context.WithCancel(context.Background())
 	job := &ConsolidationJob{
-		ID:        fmt.Sprintf("consolidate_%d", time.Now().UnixNano()),
-		Status:    "running",
-		Phase:     "scanning",
-		Message:   "텍스트 파일 탐색 중...",
-		StartTime: time.Now(),
-		Progress: &ConsolidationProgress{},
+		ID:         fmt.Sprintf("consolidate_%d", time.Now().UnixNano()),
+		Status:     "running",
+		Phase:      "scanning",
+		Message:    "텍스트 파일 탐색 중...",
+		StartTime:  time.Now(),
+		Progress:   &ConsolidationProgress{},
 		cancelFunc: cancel,
 	}
 

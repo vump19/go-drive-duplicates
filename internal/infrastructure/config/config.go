@@ -14,13 +14,13 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server      ServerConfig      `json:"server" yaml:"server"`
-	Database    DatabaseConfig    `json:"database" yaml:"database"`
-	GoogleDrive GoogleDriveConfig `json:"googleDrive" yaml:"google_drive"`
-	Hash        HashConfig        `json:"hash" yaml:"hash"`
-	Processing  ProcessingConfig  `json:"processing" yaml:"processing"`
-	Deletion    DeletionConfig    `json:"deletion" yaml:"deletion"`
-	Logging     LoggingConfig     `json:"logging" yaml:"logging"`
+	Server         ServerConfig         `json:"server" yaml:"server"`
+	Database       DatabaseConfig       `json:"database" yaml:"database"`
+	GoogleDrive    GoogleDriveConfig    `json:"googleDrive" yaml:"google_drive"`
+	Hash           HashConfig           `json:"hash" yaml:"hash"`
+	Processing     ProcessingConfig     `json:"processing" yaml:"processing"`
+	Deletion       DeletionConfig       `json:"deletion" yaml:"deletion"`
+	Logging        LoggingConfig        `json:"logging" yaml:"logging"`
 	Security       SecurityConfig       `json:"security" yaml:"security"`
 	AI             AIConfig             `json:"ai" yaml:"ai"`
 	SmartOrganizer SmartOrganizerConfig `json:"smartOrganizer" yaml:"smart_organizer"`
@@ -39,7 +39,7 @@ type AIConfig struct {
 
 // AIProviderConfig contains configuration for a single AI provider
 type AIProviderConfig struct {
-	Name   string `json:"name" yaml:"name"`       // claude, openai, gemini
+	Name   string `json:"name" yaml:"name"` // claude, openai, gemini
 	APIKey string `json:"apiKey" yaml:"api_key"`
 	Model  string `json:"model" yaml:"model"`
 }

@@ -16,12 +16,12 @@ type AIService interface {
 
 // AIMessage - AI에게 보내는 메시지
 type AIMessage struct {
-	Role    string `json:"role"`    // user, assistant
+	Role    string `json:"role"` // user, assistant
 	Content string `json:"content"`
 }
 
 // AIResponse - AI 응답
 type AIResponse struct {
 	Content         string                    `json:"content"`
-	RuleSuggestions []entities.RuleSuggestion  `json:"ruleSuggestions,omitempty"`
+	RuleSuggestions []entities.RuleSuggestion `json:"ruleSuggestions,omitempty"`
 }
