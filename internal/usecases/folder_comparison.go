@@ -1152,11 +1152,15 @@ func (uc *FolderComparisonUseCase) compareFilesWithUniqueTracking(sourceFiles, t
 		}
 
 		if !isDuplicate {
-			// Name + size comparison (fallback)
+			// Name + size comparison (fallback for files without a hash, e.g. Google Docs)
 			key := fmt.Sprintf("%s_%d", targetFile.Name, targetFile.Size)
-			if _, exists := sourceNameSizes[key]; exists {
-				isDuplicate = true
-				matchKey = "namesize:" + key
+			if sourceFile, exists := sourceNameSizes[key]; exists {
+				// 해시 비교 모드에서 양쪽 모두 해시가 있는데 위에서 일치하지 않았다면 내용이 다른 파일
+				bothHashed := deepComparison && targetFile.IsHashCalculated() && sourceFile.IsHashCalculated()
+				if !bothHashed {
+					isDuplicate = true
+					matchKey = "namesize:" + key
+				}
 			}
 		}
 
