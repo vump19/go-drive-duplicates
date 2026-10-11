@@ -76,7 +76,7 @@
             <div class="content-card-body">
                 <div class="form-group">
                     <label for="searchRootFolderUrl">
-                        <i class="fas fa-folder-open" style="color: #3b82f6;"></i> 검색 대상 폴더:
+                        <i class="fas fa-folder-open" style="color: #5865f2;"></i> 검색 대상 폴더:
                     </label>
                     <input type="text" id="searchRootFolderUrl" placeholder="Google Drive 폴더 URL 또는 ID (이 폴더 하위에서 검색)">
                     <small class="form-hint">지정한 폴더와 그 하위 폴더에서만 검색합니다</small>
@@ -89,7 +89,7 @@
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="skipFolderStats">
-                        <span><i class="fas fa-bolt" style="color: #f59e0b;"></i> 빠른 검색 (통계 계산 생략)</span>
+                        <span><i class="fas fa-bolt" style="color: #faa61a;"></i> 빠른 검색 (통계 계산 생략)</span>
                     </label>
                     <small class="form-hint">폴더 크기와 파일 수 계산을 생략하여 검색 속도를 높입니다</small>
                 </div>
@@ -164,12 +164,12 @@
                 <button class="modal-close" onclick="closeFolderNameSearchModal()">&times;</button>
             </div>
             <div id="folderNameSearchProgress" style="display: none; padding: 40px; text-align: center;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #3b82f6; margin-bottom: 20px;"></i>
+                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #5865f2; margin-bottom: 20px;"></i>
                 <div style="font-size: 1.2rem; color: #374151;">폴더 검색 중...</div>
-                <div id="folderNameSearchProgressText" style="color: #6b7280; margin-top: 10px;"></div>
+                <div id="folderNameSearchProgressText" style="color: #80848e; margin-top: 10px;"></div>
             </div>
             <div id="folderNameSearchResult" style="display: none;">
-                <div id="folderNameSearchSummary" style="background: #f8fafc; border-radius: 8px; padding: 15px; margin-bottom: 20px;"></div>
+                <div id="folderNameSearchSummary" style="background: #f4f5f7; border-radius: 8px; padding: 15px; margin-bottom: 20px;"></div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button class="btn btn-sm btn-outline" onclick="selectAllSearchedFolders()">
@@ -178,28 +178,28 @@
                         <button class="btn btn-sm btn-outline" onclick="deselectAllSearchedFolders()">
                             <i class="fas fa-square"></i> 전체 해제
                         </button>
-                        <span id="selectedSearchedFoldersCount" style="color: #6b7280;">0개 선택됨</span>
+                        <span id="selectedSearchedFoldersCount" style="color: #80848e;">0개 선택됨</span>
                     </div>
                     <button class="btn btn-danger" id="deleteSelectedSearchedFoldersBtn" onclick="deleteSelectedSearchedFolders()" disabled>
                         <i class="fas fa-trash"></i> 선택 휴지통 이동
                     </button>
                 </div>
-                <div id="folderNameSearchList" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;"></div>
+                <div id="folderNameSearchList" style="max-height: 400px; overflow-y: auto; border: 1px solid #e3e5e8; border-radius: 8px;"></div>
             </div>
             <div id="folderNameDeleteProgress" style="display: none; padding: 40px; text-align: center;">
-                <i class="fas fa-trash-alt" style="font-size: 48px; color: #ef4444; margin-bottom: 20px;"></i>
-                <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6; margin-bottom: 10px;" id="folderNameDeletePercentage">0%</div>
+                <i class="fas fa-trash-alt" style="font-size: 48px; color: #ed4245; margin-bottom: 20px;"></i>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #5865f2; margin-bottom: 10px;" id="folderNameDeletePercentage">0%</div>
                 <div class="progress-bar-container" style="margin: 15px 0;">
-                    <div style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
-                        <div id="folderNameDeleteBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s ease;"></div>
+                    <div style="height: 12px; background: #e3e5e8; border-radius: 6px; overflow: hidden;">
+                        <div id="folderNameDeleteBar" style="width: 0%; height: 100%; background: #5865f2; transition: width 0.3s ease;"></div>
                     </div>
                 </div>
                 <div id="folderNameDeleteText" style="font-size: 1.1rem; color: #374151;">휴지통 이동 중...</div>
             </div>
             <div id="folderNameDeleteComplete" style="display: none; padding: 40px; text-align: center;">
-                <i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 20px;"></i>
+                <i class="fas fa-check-circle" style="font-size: 48px; color: #3ba55d; margin-bottom: 20px;"></i>
                 <div style="font-size: 1.2rem; font-weight: 600; color: #374151; margin-bottom: 15px;">완료</div>
-                <div id="folderNameDeleteResult" style="color: #6b7280;"></div>
+                <div id="folderNameDeleteResult" style="color: #80848e;"></div>
                 <button class="btn btn-primary" onclick="closeFolderNameSearchModal()" style="margin-top: 20px;">
                     <i class="fas fa-check"></i> 확인
                 </button>
@@ -253,7 +253,7 @@
         <div class="modal-overlay" onclick="closeDeleteConfirmationModal()"></div>
         <div class="modal-content notification-modal">
             <div class="modal-header">
-                <h2><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> 확인</h2>
+                <h2><i class="fas fa-exclamation-triangle" style="color: #ed4245;"></i> 확인</h2>
                 <button class="modal-close" onclick="closeDeleteConfirmationModal()">&times;</button>
             </div>
             <div class="modal-body">

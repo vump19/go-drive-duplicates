@@ -51,6 +51,7 @@ body {
 }
 .page-header .header-nav {
     margin-left: auto;
+    margin-top: 0; /* index.css의 .header-nav margin-top 무력화 */
     display: flex;
     gap: 8px;
 }

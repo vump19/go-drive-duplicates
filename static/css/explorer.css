@@ -629,7 +629,7 @@ body {
 
 .panel-resizer:hover,
 .panel-resizer.active {
-    background: linear-gradient(to bottom, #5865f2, #4752c4);
+    background: #5865f2;
 }
 
 .panel-resizer::before {
@@ -797,7 +797,7 @@ body.resizing * {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #5865f2 0%, #4752c4 100%);
+    background: #5865f2;
     transition: width 0.3s ease;
     border-radius: 10px;
 }
@@ -1156,13 +1156,13 @@ body.resizing * {
 }
 
 .progress-title i {
-    color: #3b82f6;
+    color: #5865f2;
 }
 
 .progress-percentage {
     font-weight: 600;
     font-size: 0.95rem;
-    color: #3b82f6;
+    color: #5865f2;
 }
 
 .progress-bar {
@@ -1175,7 +1175,7 @@ body.resizing * {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+    background: #5865f2;
     border-radius: 4px;
     transition: width 0.3s ease;
 }
@@ -1251,7 +1251,7 @@ body.resizing * {
 }
 
 input:checked + .toggle-slider {
-    background-color: #10b981;
+    background-color: #3ba55d;
 }
 
 input:checked + .toggle-slider:before {

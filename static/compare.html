@@ -41,8 +41,8 @@
             transition: all 0.2s;
         }
         .tab-btn.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
+            color: #5865f2;
+            border-bottom-color: #5865f2;
         }
         .tab-btn:hover:not(.active) {
             color: #2b2d31;
@@ -108,7 +108,7 @@
             font-weight: 600;
             cursor: pointer;
             color: white;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background: #5865f2;
             transition: transform 0.1s;
         }
         .compare-actions button:hover { transform: translateY(-1px); }
@@ -132,9 +132,9 @@
             transition: all 0.2s;
         }
         .filter-btn.active {
-            background: #3b82f6;
+            background: #5865f2;
             color: white;
-            border-color: #3b82f6;
+            border-color: #5865f2;
         }
         .filter-btn:hover:not(.active) {
             border-color: #80848e;
@@ -165,7 +165,7 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        .job-status-badge.running { background: #dbeafe; color: #1d4ed8; }
+        .job-status-badge.running { background: #dbeafe; color: #4752c4; }
         .job-status-badge.completed { background: #dcfce7; color: #15803d; }
         .job-status-badge.failed { background: #fee2e2; color: #b91c1c; }
         .job-status-badge.cancelled { background: #fef3c7; color: #92400e; }
@@ -219,7 +219,7 @@
         }
         .job-progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            background: #5865f2;
             border-radius: 3px;
             transition: width 0.3s;
         }
@@ -234,7 +234,7 @@
         /* 카드 펼침 영역 */
         .job-card-body {
             display: none;
-            border-top: 1px solid #f1f5f9;
+            border-top: 1px solid #f4f5f7;
             padding: 20px;
         }
         .job-card-body.open { display: block; }
@@ -283,7 +283,7 @@
         }
         .result-dup-rate .rate.high { color: #ed4245; }
         .result-dup-rate .rate.medium { color: #faa61a; }
-        .result-dup-rate .rate.low { color: #22c55e; }
+        .result-dup-rate .rate.low { color: #3ba55d; }
         .result-dup-rate .info {
             font-size: 0.9rem;
             color: #80848e;
@@ -317,7 +317,7 @@
         }
         .btn-delete-files:hover { background: #d97706; }
         .btn-move-unique {
-            background: #22c55e;
+            background: #3ba55d;
             color: white;
         }
         .btn-move-unique:hover { background: #16a34a; }
@@ -343,7 +343,7 @@
             display: flex;
             align-items: center;
             padding: 10px 16px;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f4f5f7;
             gap: 12px;
             font-size: 0.9rem;
         }
@@ -380,7 +380,7 @@
             font-size: 0.85rem;
         }
         .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-        .pagination button.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .pagination button.active { background: #5865f2; color: white; border-color: #5865f2; }
         .pagination span { font-size: 0.85rem; color: #80848e; }
 
         /* 로그 컨테이너 (카드 내) */
@@ -430,7 +430,7 @@
             display: flex;
             align-items: center;
             padding: 8px 16px;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f4f5f7;
             gap: 10px;
         }
         .dup-group-file:last-child { border-bottom: none; }
@@ -640,7 +640,7 @@
                             <input type="radio" name="deleteMethod" value="trash" checked style="margin-top: 3px;">
                             <div>
                                 <div style="font-weight: 500; color: #2b2d31;">
-                                    <i class="fas fa-recycle" style="color: #22c55e;"></i> 휴지통으로 이동
+                                    <i class="fas fa-recycle" style="color: #3ba55d;"></i> 휴지통으로 이동
                                 </div>
                                 <div style="font-size: 12px; color: #80848e; margin-top: 2px;">
                                     파일을 휴지통으로 이동합니다. 나중에 복구할 수 있습니다.

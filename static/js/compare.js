@@ -227,7 +227,7 @@ const CompareUI = {
             progressBarHtml = `
                 <div class="job-progress-bar-container">
                     <div class="job-progress-bar">
-                        <div class="job-progress-fill" style="width: ${pct}%; background: linear-gradient(90deg, #ef4444, #f87171);"></div>
+                        <div class="job-progress-fill" style="width: ${pct}%; background: #ed4245;"></div>
                     </div>
                     <div class="job-progress-info">
                         <span>${dp.currentStep || '삭제 진행 중...'}</span>
@@ -242,7 +242,7 @@ const CompareUI = {
             progressBarHtml = `
                 <div class="job-progress-bar-container">
                     <div class="job-progress-bar">
-                        <div class="job-progress-fill" style="width: ${pct}%; background: linear-gradient(90deg, #22c55e, #4ade80);"></div>
+                        <div class="job-progress-fill" style="width: ${pct}%; background: #3ba55d;"></div>
                     </div>
                     <div class="job-progress-info">
                         <span>${mp.currentStep || '이동 진행 중...'}</span>
@@ -271,7 +271,7 @@ const CompareUI = {
                     bodyHtml = this.renderComparisonResult(job);
                 }
             } else if (job.status === 'failed') {
-                bodyHtml = `<div style="color: #ef4444; padding: 12px;"><i class="fas fa-exclamation-circle"></i> ${job.errorMessage || '오류가 발생했습니다.'}</div>`;
+                bodyHtml = `<div style="color: #ed4245; padding: 12px;"><i class="fas fa-exclamation-circle"></i> ${job.errorMessage || '오류가 발생했습니다.'}</div>`;
             }
 
             // 삭제/이동 진행 표시
@@ -335,10 +335,10 @@ const CompareUI = {
 
     getJobSummary(job) {
         if (job.deletionProgressId) {
-            return '<span style="color: #ef4444;"><i class="fas fa-trash"></i> 삭제 중...</span>';
+            return '<span style="color: #ed4245;"><i class="fas fa-trash"></i> 삭제 중...</span>';
         }
         if (job.moveProgressId) {
-            return '<span style="color: #22c55e;"><i class="fas fa-arrow-right"></i> 이동 중...</span>';
+            return '<span style="color: #3ba55d;"><i class="fas fa-arrow-right"></i> 이동 중...</span>';
         }
         if (job.status === 'completed') {
             if (job.type === 'single-folder' && job.singleFolderResult) {
@@ -369,17 +369,17 @@ const CompareUI = {
 
         return `
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                <div style="background: #f8fafc; padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="background: #f4f5f7; padding: 10px; border-radius: 8px; text-align: center;">
                     <div style="font-size: 0.8rem; color: #94a3b8;">현재 작업</div>
-                    <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem;">${p.currentStep || '시작 중...'}</div>
+                    <div style="font-weight: 600; color: #2b2d31; font-size: 0.9rem;">${p.currentStep || '시작 중...'}</div>
                 </div>
-                <div style="background: #f8fafc; padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="background: #f4f5f7; padding: 10px; border-radius: 8px; text-align: center;">
                     <div style="font-size: 0.8rem; color: #94a3b8;">스캔된 파일</div>
-                    <div style="font-weight: 600; color: #3b82f6;">${scannedFolders > 0 ? `${scannedFolders}폴더 / ` : ''}${scannedFiles || p.processedItems || 0}개</div>
+                    <div style="font-weight: 600; color: #5865f2;">${scannedFolders > 0 ? `${scannedFolders}폴더 / ` : ''}${scannedFiles || p.processedItems || 0}개</div>
                 </div>
-                <div style="background: #f8fafc; padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="background: #f4f5f7; padding: 10px; border-radius: 8px; text-align: center;">
                     <div style="font-size: 0.8rem; color: #94a3b8;">경과 시간</div>
-                    <div style="font-weight: 600; color: #1e293b;">${formatElapsedTime(job.startTime)}</div>
+                    <div style="font-weight: 600; color: #2b2d31;">${formatElapsedTime(job.startTime)}</div>
                 </div>
             </div>
         `;
@@ -523,7 +523,7 @@ const CompareUI = {
         const groups = result.duplicateGroups || [];
         if (groups.length === 0) {
             return `
-                <div style="text-align: center; padding: 20px; color: #22c55e;">
+                <div style="text-align: center; padding: 20px; color: #3ba55d;">
                     <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 8px;"></i>
                     <div style="font-size: 1rem; font-weight: 600;">중복 파일이 없습니다!</div>
                 </div>
@@ -575,7 +575,7 @@ const CompareUI = {
                                 생성: ${created} | 수정: ${modified} | ${formatFileSize(file.size)}
                             </div>
                         </div>
-                        ${file.webViewLink ? `<a href="${file.webViewLink}" target="_blank" style="color: #3b82f6; font-size: 0.85rem;" onclick="event.stopPropagation();"><i class="fas fa-external-link-alt"></i></a>` : ''}
+                        ${file.webViewLink ? `<a href="${file.webViewLink}" target="_blank" style="color: #5865f2; font-size: 0.85rem;" onclick="event.stopPropagation();"><i class="fas fa-external-link-alt"></i></a>` : ''}
                     </div>
                 `;
             });
@@ -604,7 +604,7 @@ const CompareUI = {
         if (dp.status === 'completed') {
             let html = `
                 <div class="deletion-progress-area">
-                    <div style="text-align: center; color: #22c55e; font-weight: 600; font-size: 1.1rem;">
+                    <div style="text-align: center; color: #3ba55d; font-weight: 600; font-size: 1.1rem;">
                         <i class="fas fa-check-circle"></i> 삭제가 완료되었습니다!
                     </div>
                 </div>
@@ -620,7 +620,7 @@ const CompareUI = {
             <div class="deletion-progress-area">
                 <h4><i class="fas fa-trash"></i> 삭제 진행 중...</h4>
                 <div class="job-progress-bar">
-                    <div class="job-progress-fill" style="width: ${pct}%; background: linear-gradient(90deg, #ef4444, #f87171);"></div>
+                    <div class="job-progress-fill" style="width: ${pct}%; background: #ed4245;"></div>
                 </div>
                 <div class="job-progress-info">
                     <span>${dp.currentStep || '삭제 중...'}</span>
@@ -632,7 +632,7 @@ const CompareUI = {
         const cleanupFolders = dp.metadata?.cleanupFolders;
         if (cleanupFolders && Array.isArray(cleanupFolders)) {
             html += `
-                <div style="margin-top: 10px; font-size: 0.82rem; color: #64748b;">
+                <div style="margin-top: 10px; font-size: 0.82rem; color: #80848e;">
                     빈 폴더 정리: ${dp.metadata.cleanupProcessed || 0}/${dp.metadata.cleanupTotal || 0}
                 </div>
                 <div style="max-height: 120px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; margin-top: 4px;">
@@ -655,7 +655,7 @@ const CompareUI = {
         if (mp.status === 'completed') {
             return `
                 <div class="deletion-progress-area">
-                    <div style="text-align: center; color: #22c55e; font-weight: 600; font-size: 1.1rem;">
+                    <div style="text-align: center; color: #3ba55d; font-weight: 600; font-size: 1.1rem;">
                         <i class="fas fa-check-circle"></i> 파일 이동이 완료되었습니다! (${mp.processedItems || 0}개 이동)
                     </div>
                 </div>
@@ -665,16 +665,16 @@ const CompareUI = {
         const pct = mp.totalItems > 0 ? Math.round((mp.processedItems / mp.totalItems) * 100) : 0;
         return `
             <div class="deletion-progress-area">
-                <h4><i class="fas fa-arrow-right" style="color: #22c55e;"></i> 파일 이동 중...</h4>
+                <h4><i class="fas fa-arrow-right" style="color: #3ba55d;"></i> 파일 이동 중...</h4>
                 <div class="job-progress-bar">
-                    <div class="job-progress-fill" style="width: ${pct}%; background: linear-gradient(90deg, #22c55e, #4ade80);"></div>
+                    <div class="job-progress-fill" style="width: ${pct}%; background: #3ba55d;"></div>
                 </div>
                 <div class="job-progress-info">
                     <span>${mp.currentStep || '이동 중...'}</span>
                     <span>${pct}%</span>
                 </div>
                 <div style="text-align: center; margin-top: 10px;">
-                    <button onclick="event.stopPropagation(); cancelMoveUniqueFiles(${job.id})" style="padding: 6px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <button onclick="event.stopPropagation(); cancelMoveUniqueFiles(${job.id})" style="padding: 6px 16px; background: #ed4245; color: white; border: none; border-radius: 6px; cursor: pointer;">
                         <i class="fas fa-stop"></i> 이동 취소
                     </button>
                 </div>
@@ -908,9 +908,9 @@ function deleteTargetFolder(jobId, targetFolderId) {
 
     const message = `
         <div style="margin-bottom: 16px;">
-            <strong style="color: #ef4444;">대상 폴더 전체 삭제</strong>
+            <strong style="color: #ed4245;">대상 폴더 전체 삭제</strong>
         </div>
-        <div style="font-size: 0.9rem; color: #6b7280;">대상 폴더를 삭제하시겠습니까?</div>
+        <div style="font-size: 0.9rem; color: #80848e;">대상 폴더를 삭제하시겠습니까?</div>
     `;
 
     showDeleteConfirmation(message, async (data) => {
@@ -943,7 +943,7 @@ function deleteDuplicateFiles(jobId) {
         <div style="margin-bottom: 16px;">
             <strong>중복 파일 삭제</strong>
         </div>
-        <div style="font-size: 0.9rem; color: #6b7280;">${fileCount}개의 중복 파일을 삭제하시겠습니까?</div>
+        <div style="font-size: 0.9rem; color: #80848e;">${fileCount}개의 중복 파일을 삭제하시겠습니까?</div>
     `;
 
     showDeleteConfirmation(message, async (data) => {

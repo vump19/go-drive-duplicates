@@ -183,7 +183,7 @@ async function extractFolderIdFromUrl(url) {
 function showAnalysisProgress(excludePatterns = []) {
     // 제외 패턴 표시 HTML 생성
     const excludeInfoHtml = excludePatterns.length > 0 ? `
-        <div class="exclude-patterns-info" style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px;">
+        <div class="exclude-patterns-info" style="background: #fef3c7; border: 1px solid #faa61a; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px;">
             <div style="display: flex; align-items: center; gap: 8px; color: #92400e;">
                 <i class="fas fa-filter"></i>
                 <span><strong>제외 패턴:</strong> ${excludePatterns.join(', ')}</span>
@@ -343,7 +343,7 @@ function showAnalysisResult(result) {
     if (result.emptyFolders.length > 0) {
         // 제외 패턴 안내 문구 (제외 패턴이 있을 경우에만 표시)
         const excludeNoticeHtml = (result.excludeFolderNames && result.excludeFolderNames.length > 0) ? `
-            <div class="exclude-notice" style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px;">
+            <div class="exclude-notice" style="background: #fef3c7; border: 1px solid #faa61a; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px;">
                 <div style="display: flex; align-items: flex-start; gap: 10px; color: #92400e;">
                     <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
                     <div>
@@ -446,7 +446,7 @@ async function deleteSingleEmptyFolder(folderId) {
         <div style="margin-bottom: 16px;">
             <strong>이 빈 폴더를 휴지통으로 이동하시겠습니까?</strong>
         </div>
-        <div style="font-size: 0.95rem; color: #6b7280;">
+        <div style="font-size: 0.95rem; color: #80848e;">
             폴더명: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">${folderName}</code>
         </div>
     `;
@@ -571,7 +571,7 @@ async function deleteSelectedEmptyFolders() {
         <div style="margin-bottom: 16px;">
             <strong>선택된 ${selectedIds.length}개의 빈 폴더를 휴지통으로 이동하시겠습니까?</strong>
         </div>
-        <div style="font-size: 0.9rem; color: #6b7280; max-height: 120px; overflow-y: auto; background: #f8f9fa; padding: 8px; border-radius: 4px;">
+        <div style="font-size: 0.9rem; color: #80848e; max-height: 120px; overflow-y: auto; background: #f8f9fa; padding: 8px; border-radius: 4px;">
             ${selectedFolders.slice(0, 5).map(f => `• ${f.name}`).join('<br>')}
             ${selectedFolders.length > 5 ? `<br>... 외 ${selectedFolders.length - 5}개` : ''}
         </div>
@@ -595,9 +595,9 @@ async function deleteAllEmptyFolders() {
     const folderCount = currentAnalysisResult.emptyFolders.length;
     const message = `
         <div style="margin-bottom: 16px;">
-            <strong style="color: #ef4444;">⚠️ 모든 빈 폴더 ${folderCount}개를 휴지통으로 이동하시겠습니까?</strong>
+            <strong style="color: #ed4245;">⚠️ 모든 빈 폴더 ${folderCount}개를 휴지통으로 이동하시겠습니까?</strong>
         </div>
-        <div style="font-size: 0.9rem; color: #6b7280;">
+        <div style="font-size: 0.9rem; color: #80848e;">
             이 작업은 분석된 모든 빈 폴더를 휴지통으로 이동합니다.
         </div>
     `;
@@ -802,22 +802,22 @@ function updateEmptyFolderDeletionProgressSSE(data) {
     modal.querySelector('.modal-body').innerHTML = `
         <div style="text-align: center; padding: 20px;">
             <div style="margin-bottom: 20px;">
-                <i class="fas fa-trash-alt" style="font-size: 48px; color: #3b82f6;"></i>
+                <i class="fas fa-trash-alt" style="font-size: 48px; color: #5865f2;"></i>
             </div>
-            <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6; margin-bottom: 10px;">
+            <div style="font-size: 1.5rem; font-weight: bold; color: #5865f2; margin-bottom: 10px;">
                 ${percentage}%
             </div>
             <div class="progress-bar-container" style="margin: 15px 0;">
-                <div style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
-                    <div style="width: ${percentage}%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s ease;"></div>
+                <div style="height: 12px; background: #e3e5e8; border-radius: 6px; overflow: hidden;">
+                    <div style="width: ${percentage}%; height: 100%; background: #5865f2; transition: width 0.3s ease;"></div>
                 </div>
             </div>
             <div style="font-size: 1.1rem; color: #374151; margin-bottom: 8px;">
                 <strong>${data.completed}</strong> / ${data.total} 폴더 완료
             </div>
-            <div style="display: flex; justify-content: center; gap: 20px; font-size: 0.9rem; color: #6b7280;">
-                <span style="color: #10b981;">✓ 성공: ${data.success || 0}</span>
-                <span style="color: #ef4444;">✗ 실패: ${data.failed || 0}</span>
+            <div style="display: flex; justify-content: center; gap: 20px; font-size: 0.9rem; color: #80848e;">
+                <span style="color: #3ba55d;">✓ 성공: ${data.success || 0}</span>
+                <span style="color: #ed4245;">✗ 실패: ${data.failed || 0}</span>
             </div>
         </div>
     `;
@@ -836,7 +836,7 @@ function showEmptyFolderDeletionProgress(totalCount, permanentDelete = false) {
     }
 
     const actionText = permanentDelete ? '완전 삭제' : '휴지통으로 이동';
-    const iconColor = permanentDelete ? '#ef4444' : '#3b82f6';
+    const iconColor = permanentDelete ? '#ed4245' : '#5865f2';
 
     // 새 모달 생성
     modal = document.createElement('div');
@@ -856,11 +856,11 @@ function showEmptyFolderDeletionProgress(totalCount, permanentDelete = false) {
                 <div style="font-size: 1.2rem; color: #374151; margin-bottom: 10px;">
                     총 <strong>${totalCount}개</strong> 폴더 ${actionText} 중...
                 </div>
-                <div style="color: #6b7280; font-size: 0.9rem;">
+                <div style="color: #80848e; font-size: 0.9rem;">
                     잠시만 기다려주세요
                 </div>
                 <div style="margin-top: 10px; padding: 6px 12px; background: ${permanentDelete ? '#fef2f2' : '#eff6ff'}; border-radius: 6px; display: inline-block;">
-                    <span style="color: ${permanentDelete ? '#dc2626' : '#2563eb'}; font-size: 0.85rem;">
+                    <span style="color: ${permanentDelete ? '#dc2626' : '#4752c4'}; font-size: 0.85rem;">
                         <i class="fas ${permanentDelete ? 'fa-exclamation-triangle' : 'fa-recycle'}"></i>
                         ${permanentDelete ? '완전 삭제 (복구 불가)' : '휴지통으로 이동 (복구 가능)'}
                     </span>
@@ -896,13 +896,13 @@ function updateEmptyFolderDeletionProgress(completed, total, folderName, isCompl
     if (completed < total) {
         if (isCompleted) {
             // 현재 폴더 삭제 완료, 다음 폴더 대기 중
-            currentFolder.innerHTML = `<i class="fas fa-check" style="color: #10b981;"></i> <span>완료: ${folderName}</span>`;
+            currentFolder.innerHTML = `<i class="fas fa-check" style="color: #3ba55d;"></i> <span>완료: ${folderName}</span>`;
         } else {
             // 현재 폴더 삭제 중
-            currentFolder.innerHTML = `<i class="fas fa-spinner fa-spin" style="color: #3b82f6;"></i> <span>삭제 중: ${folderName}</span>`;
+            currentFolder.innerHTML = `<i class="fas fa-spinner fa-spin" style="color: #5865f2;"></i> <span>삭제 중: ${folderName}</span>`;
         }
     } else {
-        currentFolder.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981;"></i> <span>모든 폴더 삭제 완료!</span>`;
+        currentFolder.innerHTML = `<i class="fas fa-check-circle" style="color: #3ba55d;"></i> <span>모든 폴더 삭제 완료!</span>`;
     }
 }
 
@@ -923,13 +923,13 @@ function showEmptyFolderDeletionResult(successCount, failedCount, totalCount, fa
     // 연쇄 삭제 정보 표시
     const cascadeInfo = cascadeDeletedCount > 0
         ? `<div class="stat-item">
-               <div style="font-size: 2rem; font-weight: bold; color: #8b5cf6;">${cascadeDeletedCount}</div>
-               <div style="color: #6b7280;">연쇄 삭제</div>
+               <div style="font-size: 2rem; font-weight: bold; color: #5865f2;">${cascadeDeletedCount}</div>
+               <div style="color: #80848e;">연쇄 삭제</div>
            </div>`
         : '';
 
     const cascadeNote = cascadeDeletedCount > 0
-        ? `<div style="color: #8b5cf6; font-size: 0.9rem; margin-top: 8px;">
+        ? `<div style="color: #5865f2; font-size: 0.9rem; margin-top: 8px;">
                <i class="fas fa-link"></i> 부모 폴더 ${cascadeDeletedCount}개가 비어서 함께 삭제되었습니다.
            </div>`
         : '';
@@ -937,23 +937,23 @@ function showEmptyFolderDeletionResult(successCount, failedCount, totalCount, fa
     let resultHtml = `
         <div class="modal-header">
             <h2 class="modal-title">
-                <i class="fas fa-check-circle" style="color: #10b981;"></i> 삭제 완료
+                <i class="fas fa-check-circle" style="color: #3ba55d;"></i> 삭제 완료
             </h2>
         </div>
         <div class="modal-body">
             <div class="deletion-result-summary" style="text-align: center; padding: 20px;">
                 <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 20px;">
                     <div class="stat-item">
-                        <div style="font-size: 2rem; font-weight: bold; color: #10b981;">${successCount}</div>
-                        <div style="color: #6b7280;">삭제 성공</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: #3ba55d;">${successCount}</div>
+                        <div style="color: #80848e;">삭제 성공</div>
                     </div>
                     ${cascadeInfo}
                     <div class="stat-item">
-                        <div style="font-size: 2rem; font-weight: bold; color: #ef4444;">${failedCount}</div>
-                        <div style="color: #6b7280;">삭제 실패</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: #ed4245;">${failedCount}</div>
+                        <div style="color: #80848e;">삭제 실패</div>
                     </div>
                 </div>
-                <div style="color: #6b7280; margin-bottom: 20px;">
+                <div style="color: #80848e; margin-bottom: 20px;">
                     총 ${totalCount}개 폴더 중 ${successCount}개 삭제됨
                     ${cascadeNote}
                 </div>
@@ -966,7 +966,7 @@ function showEmptyFolderDeletionResult(successCount, failedCount, totalCount, fa
                         <i class="fas fa-exclamation-triangle"></i> 실패한 폴더:
                     </div>
                     ${failedFolders.map(f => `
-                        <div style="font-size: 0.9rem; color: #6b7280; padding: 4px 0;">
+                        <div style="font-size: 0.9rem; color: #80848e; padding: 4px 0;">
                             • ${f.name} <small style="color: #dc2626;">(${f.error})</small>
                         </div>
                     `).join('')}
@@ -977,7 +977,7 @@ function showEmptyFolderDeletionResult(successCount, failedCount, totalCount, fa
     resultHtml += `
             </div>
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: center; padding: 15px 20px; border-top: 1px solid #e2e8f0;">
+        <div class="modal-footer" style="display: flex; justify-content: center; padding: 15px 20px; border-top: 1px solid #e3e5e8;">
             <button class="btn btn-primary" onclick="closeEmptyFolderDeletionModal()">
                 <i class="fas fa-check"></i> 확인
             </button>
@@ -1092,13 +1092,13 @@ function showAnalysisCancelled() {
     const progressSection = document.getElementById('folderAnalysisProgress');
     if (progressSection) {
         progressSection.innerHTML = `
-            <div class="step-header" style="color: #f59e0b;">
+            <div class="step-header" style="color: #faa61a;">
                 <i class="fas fa-ban"></i> 폴더 분석 취소됨
             </div>
 
             <div style="text-align: center; padding: 30px;">
-                <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #f59e0b; margin-bottom: 15px;"></i>
-                <p style="color: #6b7280; margin-bottom: 20px;">폴더 분석이 사용자에 의해 취소되었습니다.</p>
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #faa61a; margin-bottom: 15px;"></i>
+                <p style="color: #80848e; margin-bottom: 20px;">폴더 분석이 사용자에 의해 취소되었습니다.</p>
                 <button class="btn btn-primary" onclick="closeFolderAnalysisModal()">
                     <i class="fas fa-times"></i> 닫기
                 </button>
@@ -1291,11 +1291,11 @@ function showCleanupResult(result) {
                         <span class="stat-label">스캔된 폴더</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-value" style="color: #ef4444;">${result.deletedCount}</span>
+                        <span class="stat-value" style="color: #ed4245;">${result.deletedCount}</span>
                         <span class="stat-label">삭제됨</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-value" style="color: #f59e0b;">${result.skippedCount}</span>
+                        <span class="stat-value" style="color: #faa61a;">${result.skippedCount}</span>
                         <span class="stat-label">건너뜀</span>
                     </div>
                 </div>
@@ -1309,7 +1309,7 @@ function showCleanupResult(result) {
     if (result.deletedCount > 0) {
         const deletedHtml = result.deletedFolders.map(folderName => `
             <div class="cleanup-folder-item">
-                <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                <i class="fas fa-check-circle" style="color: #3ba55d;"></i>
                 <span>${folderName}</span>
             </div>
         `).join('');
@@ -1322,7 +1322,7 @@ function showCleanupResult(result) {
     if (result.skippedCount > 0) {
         const skippedHtml = result.skippedFolders.map(folderName => `
             <div class="cleanup-folder-item">
-                <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                <i class="fas fa-exclamation-triangle" style="color: #faa61a;"></i>
                 <span>${folderName}</span>
             </div>
         `).join('');
@@ -1504,20 +1504,20 @@ function showFolderSearchResult(result) {
         summaryHtml = `
             <div style="display: flex; justify-content: space-around; text-align: center;">
                 <div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;">${result.totalCount}</div>
-                    <div style="color: #6b7280; font-size: 0.9rem;">발견된 폴더</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #5865f2;">${result.totalCount}</div>
+                    <div style="color: #80848e; font-size: 0.9rem;">발견된 폴더</div>
                 </div>
                 <div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${result.totalFiles}</div>
-                    <div style="color: #6b7280; font-size: 0.9rem;">총 파일 수</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #3ba55d;">${result.totalFiles}</div>
+                    <div style="color: #80848e; font-size: 0.9rem;">총 파일 수</div>
                 </div>
                 <div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">${formatFileSize(result.totalSize)}</div>
-                    <div style="color: #6b7280; font-size: 0.9rem;">총 크기</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #faa61a;">${formatFileSize(result.totalSize)}</div>
+                    <div style="color: #80848e; font-size: 0.9rem;">총 크기</div>
                 </div>
             </div>
-            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem;">
+            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e3e5e8;">
+                <span style="background: #dbeafe; color: #4752c4; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem;">
                     <i class="fas fa-search"></i> 검색어: <strong>${result.searchPattern}</strong>
                 </span>
             </div>
@@ -1527,12 +1527,12 @@ function showFolderSearchResult(result) {
         summaryHtml = `
             <div style="display: flex; justify-content: center; text-align: center;">
                 <div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;">${result.totalCount}</div>
-                    <div style="color: #6b7280; font-size: 0.9rem;">발견된 폴더</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #5865f2;">${result.totalCount}</div>
+                    <div style="color: #80848e; font-size: 0.9rem;">발견된 폴더</div>
                 </div>
             </div>
-            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem;">
+            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e3e5e8;">
+                <span style="background: #dbeafe; color: #4752c4; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem;">
                     <i class="fas fa-search"></i> 검색어: <strong>${result.searchPattern}</strong>
                 </span>
                 <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem; margin-left: 8px;">
@@ -1551,22 +1551,22 @@ function showFolderSearchResult(result) {
             const statsHtml = folderHasStats
                 ? `<div style="text-align: right; flex-shrink: 0;">
                        <div style="font-weight: 500; color: #374151;">${formatFileSize(folder.size)}</div>
-                       <div style="font-size: 0.8rem; color: #6b7280;">${folder.fileCount}개 파일</div>
+                       <div style="font-size: 0.8rem; color: #80848e;">${folder.fileCount}개 파일</div>
                    </div>`
                 : `<div style="text-align: right; flex-shrink: 0;">
                        <div style="font-size: 0.8rem; color: #9ca3af;"><i class="fas fa-bolt"></i> 빠른 검색</div>
                    </div>`;
             return `
-                <div class="searched-folder-item" style="display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #e2e8f0; gap: 12px;">
+                <div class="searched-folder-item" style="display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #e3e5e8; gap: 12px;">
                     <label style="display: flex; align-items: center; cursor: pointer;">
                         <input type="checkbox" class="searched-folder-check" data-folder-id="${folder.id}" onchange="updateSearchedFolderSelection()">
                     </label>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-folder" style="color: #f59e0b;"></i>
-                            <span style="font-weight: 500; color: #1e293b;">${folder.name}</span>
+                            <i class="fas fa-folder" style="color: #faa61a;"></i>
+                            <span style="font-weight: 500; color: #2b2d31;">${folder.name}</span>
                         </div>
-                        <div style="font-size: 0.85rem; color: #6b7280; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <div style="font-size: 0.85rem; color: #80848e; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             ${folder.path}
                         </div>
                     </div>
@@ -1577,7 +1577,7 @@ function showFolderSearchResult(result) {
         document.getElementById('folderNameSearchList').innerHTML = listHtml;
     } else {
         document.getElementById('folderNameSearchList').innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #6b7280;">
+            <div style="text-align: center; padding: 40px; color: #80848e;">
                 <i class="fas fa-folder-open" style="font-size: 48px; margin-bottom: 15px; color: #d1d5db;"></i>
                 <div>검색 결과가 없습니다.</div>
             </div>
@@ -1651,7 +1651,7 @@ async function deleteSelectedSearchedFolders() {
 
     // 통계 정보 HTML (빠른 검색 시 숨김)
     const statsHtml = hasStats
-        ? `<div style="font-size: 0.9rem; color: #6b7280; margin-bottom: 12px;">
+        ? `<div style="font-size: 0.9rem; color: #80848e; margin-bottom: 12px;">
                <div>• 총 파일: <strong>${totalFiles}개</strong></div>
                <div>• 총 크기: <strong>${formatFileSize(totalSize)}</strong></div>
            </div>`
@@ -1664,7 +1664,7 @@ async function deleteSelectedSearchedFolders() {
             <strong>선택된 ${selectedIds.length}개의 폴더를 삭제하시겠습니까?</strong>
         </div>
         ${statsHtml}
-        <div style="font-size: 0.9rem; color: #6b7280; max-height: 100px; overflow-y: auto; background: #f8f9fa; padding: 8px; border-radius: 4px;">
+        <div style="font-size: 0.9rem; color: #80848e; max-height: 100px; overflow-y: auto; background: #f8f9fa; padding: 8px; border-radius: 4px;">
             ${selectedFolders.slice(0, 5).map(f => `• ${f.name} (${f.path})`).join('<br>')}
             ${selectedFolders.length > 5 ? `<br>... 외 ${selectedFolders.length - 5}개` : ''}
         </div>
@@ -1780,15 +1780,15 @@ function showFolderNameDeleteComplete(result) {
     document.getElementById('folderNameDeleteResult').innerHTML = `
         <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 15px;">
             <div>
-                <span style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${result.successCount}</span>
-                <span style="color: #6b7280;"> 성공</span>
+                <span style="font-size: 1.5rem; font-weight: bold; color: #3ba55d;">${result.successCount}</span>
+                <span style="color: #80848e;"> 성공</span>
             </div>
             <div>
-                <span style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${result.failedCount}</span>
-                <span style="color: #6b7280;"> 실패</span>
+                <span style="font-size: 1.5rem; font-weight: bold; color: #ed4245;">${result.failedCount}</span>
+                <span style="color: #80848e;"> 실패</span>
             </div>
         </div>
-        <div style="color: #6b7280;">
+        <div style="color: #80848e;">
             총 ${result.totalCount}개 폴더 중 ${result.successCount}개 삭제됨
         </div>
     `;
@@ -1889,12 +1889,12 @@ function showExportProgressModal() {
             </div>
             <div class="modal-body" id="exportProgressBody" style="text-align: center; padding: 30px;">
                 <div style="margin-bottom: 20px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #3b82f6;"></i>
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #5865f2;"></i>
                 </div>
                 <div style="font-size: 1.1rem; color: #374151; margin-bottom: 8px;">
                     파일 목록 수집 준비 중...
                 </div>
-                <div style="font-size: 0.9rem; color: #6b7280;" id="exportProgressDetail">
+                <div style="font-size: 0.9rem; color: #80848e;" id="exportProgressDetail">
                 </div>
             </div>
         </div>
@@ -1915,7 +1915,7 @@ function updateExportProgress(event) {
     if (!body) return;
 
     let icon = 'fa-spinner fa-spin';
-    let color = '#3b82f6';
+    let color = '#5865f2';
     let message = event.message || '처리 중...';
     let detail = '';
 
@@ -1928,12 +1928,12 @@ function updateExportProgress(event) {
             break;
         case 'generating':
             icon = 'fa-file-csv';
-            color = '#f59e0b';
+            color = '#faa61a';
             detail = `파일: ${event.totalFiles}개, 폴더: ${event.totalFolders}개`;
             break;
         case 'uploading':
             icon = 'fa-cloud-upload-alt';
-            color = '#8b5cf6';
+            color = '#5865f2';
             detail = `파일: ${event.totalFiles}개, 폴더: ${event.totalFolders}개`;
             break;
     }
@@ -1945,7 +1945,7 @@ function updateExportProgress(event) {
         <div style="font-size: 1.1rem; color: #374151; margin-bottom: 8px;">
             ${message}
         </div>
-        <div style="font-size: 0.9rem; color: #6b7280;">
+        <div style="font-size: 0.9rem; color: #80848e;">
             ${detail}
         </div>
     `;
@@ -1962,12 +1962,12 @@ function showExportComplete(result) {
     content.innerHTML = `
         <div class="modal-header">
             <h2 class="modal-title">
-                <i class="fas fa-check-circle" style="color: #10b981;"></i> 내보내기 완료
+                <i class="fas fa-check-circle" style="color: #3ba55d;"></i> 내보내기 완료
             </h2>
         </div>
         <div class="modal-body" style="text-align: center; padding: 30px;">
             <div style="margin-bottom: 20px;">
-                <i class="fas fa-file-spreadsheet" style="font-size: 48px; color: #10b981;"></i>
+                <i class="fas fa-file-spreadsheet" style="font-size: 48px; color: #3ba55d;"></i>
             </div>
             <div style="font-size: 1.1rem; color: #374151; margin-bottom: 15px;">
                 <strong>${result.folderName}</strong> 폴더의 파일 목록이<br>
@@ -1975,20 +1975,20 @@ function showExportComplete(result) {
             </div>
             <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 20px;">
                 <div>
-                    <div style="font-size: 1.3rem; font-weight: bold; color: #3b82f6;">${result.totalFiles}</div>
-                    <div style="font-size: 0.85rem; color: #6b7280;">파일</div>
+                    <div style="font-size: 1.3rem; font-weight: bold; color: #5865f2;">${result.totalFiles}</div>
+                    <div style="font-size: 0.85rem; color: #80848e;">파일</div>
                 </div>
                 <div>
-                    <div style="font-size: 1.3rem; font-weight: bold; color: #f59e0b;">${result.totalFolders}</div>
-                    <div style="font-size: 0.85rem; color: #6b7280;">폴더</div>
+                    <div style="font-size: 1.3rem; font-weight: bold; color: #faa61a;">${result.totalFolders}</div>
+                    <div style="font-size: 0.85rem; color: #80848e;">폴더</div>
                 </div>
             </div>
             <a href="${result.spreadsheetUrl}" target="_blank"
-               style="display: inline-block; padding: 10px 24px; background: #10b981; color: white; border-radius: 8px; text-decoration: none; font-weight: 500;">
+               style="display: inline-block; padding: 10px 24px; background: #3ba55d; color: white; border-radius: 8px; text-decoration: none; font-weight: 500;">
                 <i class="fas fa-external-link-alt"></i> 스프레드시트 열기
             </a>
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: center; padding: 15px 20px; border-top: 1px solid #e2e8f0;">
+        <div class="modal-footer" style="display: flex; justify-content: center; padding: 15px 20px; border-top: 1px solid #e3e5e8;">
             <button class="btn btn-primary" onclick="closeExportModal()">
                 <i class="fas fa-check"></i> 확인
             </button>
@@ -2007,21 +2007,21 @@ function showExportError(errorMessage) {
     content.innerHTML = `
         <div class="modal-header">
             <h2 class="modal-title">
-                <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> 내보내기 실패
+                <i class="fas fa-exclamation-circle" style="color: #ed4245;"></i> 내보내기 실패
             </h2>
         </div>
         <div class="modal-body" style="text-align: center; padding: 30px;">
             <div style="margin-bottom: 20px;">
-                <i class="fas fa-times-circle" style="font-size: 48px; color: #ef4444;"></i>
+                <i class="fas fa-times-circle" style="font-size: 48px; color: #ed4245;"></i>
             </div>
             <div style="font-size: 1rem; color: #374151; margin-bottom: 10px;">
                 스프레드시트 내보내기 중 오류가 발생했습니다.
             </div>
-            <div style="font-size: 0.9rem; color: #6b7280; background: #fef2f2; padding: 10px; border-radius: 6px;">
+            <div style="font-size: 0.9rem; color: #80848e; background: #fef2f2; padding: 10px; border-radius: 6px;">
                 ${errorMessage}
             </div>
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: center; padding: 15px 20px; border-top: 1px solid #e2e8f0;">
+        <div class="modal-footer" style="display: flex; justify-content: center; padding: 15px 20px; border-top: 1px solid #e3e5e8;">
             <button class="btn btn-primary" onclick="closeExportModal()">
                 <i class="fas fa-times"></i> 닫기
             </button>

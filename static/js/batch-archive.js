@@ -188,14 +188,14 @@ async function loadSubfolders() {
             // 결과 표시
             resultArea.classList.remove('hidden');
             document.getElementById('subfoldersResultText').innerHTML =
-                `<i class="fas fa-check-circle" style="color: #10b981;"></i> ` +
+                `<i class="fas fa-check-circle" style="color: #3ba55d;"></i> ` +
                 `<strong>${data.parentFolderName}</strong> 폴더에서 <strong>${data.subfolders.length}</strong>개의 하위 폴더를 불러왔습니다.`;
         } else {
             resultArea.classList.remove('hidden');
             resultArea.style.background = '#fefce8';
             resultArea.style.borderColor = '#fde68a';
             document.getElementById('subfoldersResultText').innerHTML =
-                `<i class="fas fa-info-circle" style="color: #f59e0b;"></i> ` +
+                `<i class="fas fa-info-circle" style="color: #faa61a;"></i> ` +
                 `<strong>${data.parentFolderName || '해당 폴더'}</strong>에 하위 폴더가 없습니다.`;
         }
 
@@ -206,7 +206,7 @@ async function loadSubfolders() {
         resultArea.style.background = '#fef2f2';
         resultArea.style.borderColor = '#fecaca';
         document.getElementById('subfoldersResultText').innerHTML =
-            `<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> 불러오기 실패: ${error.message}`;
+            `<i class="fas fa-exclamation-triangle" style="color: #ed4245;"></i> 불러오기 실패: ${error.message}`;
     } finally {
         btn.disabled = false;
     }
@@ -227,7 +227,7 @@ function addFolderItemWithValue(folderId, folderName) {
     item.innerHTML = `
         <div class="folder-item-number">${folderCount}</div>
         <input type="text" class="folder-item-input" value="${folderId}" data-index="${folderCount}">
-        <div class="folder-item-name" style="color: #64748b; font-size: 0.85rem; min-width: 150px;">${folderName}</div>
+        <div class="folder-item-name" style="color: #80848e; font-size: 0.85rem; min-width: 150px;">${folderName}</div>
         <div class="folder-item-status"></div>
         <button class="folder-item-delete" onclick="removeFolderItem(${folderCount})" title="삭제">
             <i class="fas fa-times"></i>
@@ -377,7 +377,7 @@ async function pollProgress() {
             if (spinnerEl) {
                 spinnerEl.className = job.status === 'completed'
                     ? 'fas fa-check-circle' : 'fas fa-times-circle';
-                spinnerEl.style.color = job.status === 'completed' ? '#10b981' : '#ef4444';
+                spinnerEl.style.color = job.status === 'completed' ? '#3ba55d' : '#ed4245';
             }
         }
 
@@ -544,11 +544,11 @@ function showResults(job) {
 
             if (result.status === 'skipped') {
                 resultItem.className = 'result-item';
-                resultItem.style.borderLeft = '4px solid #f59e0b';
+                resultItem.style.borderLeft = '4px solid #faa61a';
                 resultItem.innerHTML = `
                     <div class="result-info">
                         <div class="result-name">${result.folderName || result.folderId}</div>
-                        <div class="result-details" style="color: #f59e0b;">
+                        <div class="result-details" style="color: #faa61a;">
                             <i class="fas fa-forward"></i> 건너뜀 (다운로드할 파일 없음)
                         </div>
                     </div>
@@ -570,7 +570,7 @@ function showResults(job) {
                 resultItem.innerHTML = `
                     <div class="result-info">
                         <div class="result-name">${result.folderName || result.folderId}</div>
-                        <div class="result-details" style="color: #ef4444;">
+                        <div class="result-details" style="color: #ed4245;">
                             <i class="fas fa-exclamation-triangle"></i> ${result.error || '알 수 없는 오류'}
                         </div>
                     </div>
@@ -589,7 +589,7 @@ function showResults(job) {
             resultItem.innerHTML = `
                 <div class="result-info">
                     <div class="result-name">${error.folderName || error.folderId}</div>
-                    <div class="result-details" style="color: #ef4444;">
+                    <div class="result-details" style="color: #ed4245;">
                         <i class="fas fa-exclamation-triangle"></i> [${error.phase}] ${error.error}
                     </div>
                 </div>

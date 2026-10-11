@@ -74,7 +74,7 @@ function renderSourceFormatCheckboxes(sourceFormats) {
         // audio/* MIME이 아닌 형식에 표시 추가
         if (NON_AUDIO_MIME_EXTENSIONS.has(fmt.extension)) {
             span.textContent = `${fmt.label} (${fmt.mimeType})`;
-            span.style.color = '#f59e0b';
+            span.style.color = '#faa61a';
         } else {
             span.textContent = fmt.label;
         }
@@ -262,7 +262,7 @@ function updateProgressUI(job) {
         title.textContent = `변환 진행 중... (${job.completedFiles + job.failedFiles}/${job.totalFiles})`;
     } else if (job.status === 'completed') {
         if (job.totalFiles === 0) {
-            title.innerHTML = '오디오 파일을 찾지 못했습니다. <span style="color:#f59e0b;">소스 형식 필터를 확인해주세요.</span>';
+            title.innerHTML = '오디오 파일을 찾지 못했습니다. <span style="color:#faa61a;">소스 형식 필터를 확인해주세요.</span>';
         } else {
             title.textContent = '변환 완료!';
         }
@@ -350,7 +350,7 @@ function showResults(job) {
                 item.innerHTML = `
                     <div class="result-info">
                         <div class="result-name">
-                            <i class="fas fa-check-circle" style="color:#10b981;"></i>
+                            <i class="fas fa-check-circle" style="color:#3ba55d;"></i>
                             ${escapeHtml(result.originalName)} → ${escapeHtml(result.convertedName)}
                         </div>
                         <div class="result-details">
@@ -360,14 +360,14 @@ function showResults(job) {
                 `;
             } else if (result.status === 'skipped') {
                 item.className = 'result-item';
-                item.style.borderLeft = '4px solid #f59e0b';
+                item.style.borderLeft = '4px solid #faa61a';
                 item.innerHTML = `
                     <div class="result-info">
                         <div class="result-name">
-                            <i class="fas fa-forward" style="color:#f59e0b;"></i>
+                            <i class="fas fa-forward" style="color:#faa61a;"></i>
                             ${escapeHtml(result.originalName)}
                         </div>
-                        <div class="result-details" style="color:#f59e0b;">
+                        <div class="result-details" style="color:#faa61a;">
                             ${escapeHtml(result.error || '건너뜀')}
                         </div>
                     </div>
@@ -377,10 +377,10 @@ function showResults(job) {
                 item.innerHTML = `
                     <div class="result-info">
                         <div class="result-name">
-                            <i class="fas fa-times-circle" style="color:#ef4444;"></i>
+                            <i class="fas fa-times-circle" style="color:#ed4245;"></i>
                             ${escapeHtml(result.originalName)}
                         </div>
-                        <div class="result-details" style="color:#ef4444;">
+                        <div class="result-details" style="color:#ed4245;">
                             ${escapeHtml(result.error || '알 수 없는 오류')}
                         </div>
                     </div>

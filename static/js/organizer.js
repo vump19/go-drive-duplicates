@@ -337,7 +337,7 @@ function renderPreview(result) {
         <div class="stat-card"><div class="value">${result.totalFiles}</div><div class="label">전체 파일</div></div>
         <div class="stat-card"><div class="value" style="color:#28a745">${result.matchedFiles}</div><div class="label">매칭됨</div></div>
         <div class="stat-card"><div class="value" style="color:#6c757d">${result.unmatchedFiles}</div><div class="label">매칭 안됨</div></div>
-        <div class="stat-card"><div class="value" style="color:#667eea">${result.items.length}</div><div class="label">정리 대상</div></div>
+        <div class="stat-card"><div class="value" style="color:#5865f2">${result.items.length}</div><div class="label">정리 대상</div></div>
     `;
 
     const tbody = document.getElementById('previewTableBody');
@@ -619,7 +619,7 @@ function renderProviderList(saved) {
         const apiKey = p ? p.apiKey : '';
         const model = p ? (p.model || '') : '';
         const rank = idx + 1;
-        const rankBg = rank === 1 ? '#d97706' : '#6b7280';
+        const rankBg = rank === 1 ? '#d97706' : '#80848e';
         return `
         <div class="provider-card" data-name="${name}" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
