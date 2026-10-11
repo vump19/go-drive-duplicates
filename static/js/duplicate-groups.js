@@ -472,6 +472,21 @@ async function trashFileFromModal(fileId, fileName) {
     } catch (error) {
         console.error('파일 휴지통 이동 실패:', error);
 
+        // 409: 서버가 최신 정보로 다시 확인한 결과 더 이상 중복이 아니어서 이동을 거부함
+        if (error.status === 409) {
+            const reason = error.message.replace(/^HTTP 409:\s*/, '').trim();
+            if (trashBtn) {
+                trashBtn.innerHTML = '<i class="fas fa-shield-alt"></i>';
+                trashBtn.title = reason;
+            }
+            if (typeof showErrorMessage === 'function') {
+                showErrorMessage('휴지통으로 이동하지 않았습니다: ' + reason);
+            } else {
+                alert('⚠️ 휴지통으로 이동하지 않았습니다: ' + reason);
+            }
+            return;
+        }
+
         if (trashBtn) {
             trashBtn.disabled = false;
             trashBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';

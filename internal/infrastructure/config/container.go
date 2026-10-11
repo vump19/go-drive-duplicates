@@ -291,6 +291,7 @@ func (c *Container) initializeUseCases() error {
 		nil, // DuplicateService - to be implemented
 		c.ProgressService,
 		c.StorageProvider,
+		c.FileService,
 	)
 
 	c.FolderComparisonUseCase = usecases.NewFolderComparisonUseCase(

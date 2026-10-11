@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"go-drive-duplicates/internal/usecases"
 	"log"
 	"net/http"
@@ -431,6 +432,13 @@ func (c *DuplicateController) TrashFile(w http.ResponseWriter, r *http.Request) 
 	// Trash the file
 	err := c.duplicateFindingUseCase.TrashFile(ctx, fileID)
 	if err != nil {
+		// 더 이상 중복으로 확인되지 않아 이동을 거부한 경우
+		if errors.Is(err, usecases.ErrDuplicateNotVerifiable) ||
+			errors.Is(err, usecases.ErrDuplicateContentChanged) ||
+			errors.Is(err, usecases.ErrNoRemainingDuplicate) {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
 		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "notFound") {
 			http.Error(w, "파일을 찾을 수 없습니다", http.StatusNotFound)
 			return

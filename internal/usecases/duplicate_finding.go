@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go-drive-duplicates/internal/domain/entities"
 	"go-drive-duplicates/internal/domain/repositories"
@@ -23,6 +24,7 @@ type DuplicateFindingUseCase struct {
 	duplicateService services.DuplicateService
 	progressService  services.ProgressService
 	storageProvider  services.StorageProvider
+	fileService      services.FileService
 
 	// Configuration
 	batchSize   int
@@ -41,6 +43,7 @@ func NewDuplicateFindingUseCase(
 	duplicateService services.DuplicateService,
 	progressService services.ProgressService,
 	storageProvider services.StorageProvider,
+	fileService services.FileService,
 ) *DuplicateFindingUseCase {
 	return &DuplicateFindingUseCase{
 		fileRepo:         fileRepo,
@@ -51,6 +54,7 @@ func NewDuplicateFindingUseCase(
 		duplicateService: duplicateService,
 		progressService:  progressService,
 		storageProvider:  storageProvider,
+		fileService:      fileService,
 		batchSize:        100,
 		workerCount:      5,
 		minFileSize:      1024, // 1KB minimum
@@ -1317,9 +1321,22 @@ func (uc *DuplicateFindingUseCase) GetFilePath(ctx context.Context, fileID strin
 	return response, nil
 }
 
-// TrashFile moves a file to the Google Drive trash
+// Errors returned by TrashFile when the file can no longer be confirmed as a duplicate
+var (
+	ErrDuplicateNotVerifiable  = errors.New("중복 검사 기록이 없어 중복 여부를 확인할 수 없습니다. 중복 검사를 다시 실행하세요")
+	ErrDuplicateContentChanged = errors.New("중복 검사 이후 파일 내용이 바뀌어 더 이상 중복이 아닙니다. 중복 검사를 다시 실행하세요")
+	ErrNoRemainingDuplicate    = errors.New("같은 내용의 다른 파일이 남아 있지 않아 휴지통으로 이동하지 않았습니다 (마지막 사본 보호)")
+)
+
+// TrashFile moves a duplicate file to the Google Drive trash after confirming, with the latest
+// metadata from storage, that it still has the duplicate content and another copy remains.
 func (uc *DuplicateFindingUseCase) TrashFile(ctx context.Context, fileID string) error {
 	log.Printf("🗑️ 파일 휴지통 이동 시작: %s", fileID)
+
+	if err := uc.verifyStillDuplicate(ctx, fileID); err != nil {
+		log.Printf("⚠️ 휴지통 이동 중단 (%s): %v", fileID, err)
+		return err
+	}
 
 	err := uc.storageProvider.TrashFile(ctx, fileID)
 	if err != nil {
@@ -1328,6 +1345,55 @@ func (uc *DuplicateFindingUseCase) TrashFile(ctx context.Context, fileID string)
 
 	log.Printf("✅ 파일 휴지통 이동 완료: %s", fileID)
 	return nil
+}
+
+// verifyStillDuplicate refreshes the file and the other files with the same scanned hash from storage,
+// and checks that the file still has that content and that at least one other copy remains.
+func (uc *DuplicateFindingUseCase) verifyStillDuplicate(ctx context.Context, fileID string) error {
+	stored, err := uc.fileRepo.GetByID(ctx, fileID)
+	if err != nil {
+		return fmt.Errorf("파일 조회 실패: %w", err)
+	}
+	if stored == nil || !stored.IsHashCalculated() {
+		return ErrDuplicateNotVerifiable
+	}
+	groupHash := stored.Hash
+
+	// Look up the other copies before the refresh below may change the stored hash
+	sameHashFiles, err := uc.fileRepo.GetByHash(ctx, groupHash)
+	if err != nil {
+		return fmt.Errorf("같은 내용의 파일 조회 실패: %w", err)
+	}
+
+	current, err := uc.fileService.RefreshFileMetadata(ctx, fileID)
+	if err != nil {
+		return fmt.Errorf("Drive에서 파일 정보 확인 실패: %w", err)
+	}
+	if current.Hash != groupHash {
+		return ErrDuplicateContentChanged
+	}
+
+	for _, other := range sameHashFiles {
+		if other.ID == fileID {
+			continue
+		}
+		// Files already in the trash or deleted do not count as a remaining copy
+		exists, err := uc.storageProvider.FileExists(ctx, other.ID)
+		if err != nil || !exists {
+			continue
+		}
+		refreshed, err := uc.fileService.RefreshFileMetadata(ctx, other.ID)
+		if err != nil {
+			log.Printf("⚠️ 다른 사본 확인 실패 (%s): %v", other.ID, err)
+			continue
+		}
+		if refreshed.Hash == groupHash {
+			log.Printf("✅ 중복 확인 완료: %s (남은 사본 %s)", fileID, other.ID)
+			return nil
+		}
+	}
+
+	return ErrNoRemainingDuplicate
 }
 
 // FilePathResponse represents the response for file path information
