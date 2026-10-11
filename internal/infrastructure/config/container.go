@@ -595,14 +595,20 @@ func (fs *fileService) UpdateFilePaths(ctx context.Context, files []*entities.Fi
 	return nil
 }
 
+// ValidateFileAccess checks with the storage provider that the file or folder exists,
+// is accessible and is not in the trash. It does not depend on the local database,
+// so folders that have never been scanned can be validated too.
 func (fs *fileService) ValidateFileAccess(ctx context.Context, fileID string) error {
-	// Simple stub implementation - check if file exists
-	exists, err := fs.fileRepo.Exists(ctx, fileID)
+	if fileID == "" {
+		return fmt.Errorf("file ID is required")
+	}
+
+	exists, err := fs.storageProvider.FileExists(ctx, fileID)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("file not found: %s", fileID)
+		return fmt.Errorf("file not found or not accessible: %s", fileID)
 	}
 	return nil
 }
