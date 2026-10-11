@@ -461,13 +461,16 @@ class ExplorerApp {
             return;
         }
 
+        const cancelButton = document.getElementById('cancelOperation');
         try {
+            cancelButton.disabled = true;
             await ExplorerAPI.cancelOperation(this.currentOperation);
-            StatusBar.showMessage('Operation cancelled');
-            ModalController.closeModal(ModalController.operationModal);
+            // The operation stops after the current file; polling shows the final state
+            StatusBar.showMessage('작업 취소 요청됨 - 현재 파일 처리 후 중단됩니다');
             this.currentOperation = null;
 
         } catch (error) {
+            cancelButton.disabled = false;
             console.error('Cancel operation failed:', error);
             StatusBar.showError(`Cancel operation failed: ${error.message}`);
         }

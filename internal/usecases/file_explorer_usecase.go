@@ -17,6 +17,9 @@ type FileExplorerUseCase struct {
 	operationRepo   repositories.FileOperationRepository
 	driveAdapter    interface{} // Google Drive specific adapter
 	mu              sync.Mutex  // For thread-safe operation tracking
+
+	// Cancel functions of file operations running in this process, by operation ID
+	runningOps map[int]context.CancelFunc
 }
 
 // NewFileExplorerUseCase creates a new file explorer use case
@@ -28,6 +31,7 @@ func NewFileExplorerUseCase(
 		storageProvider: storageProvider,
 		operationRepo:   operationRepo,
 		driveAdapter:    storageProvider, // Cast to specific adapter if needed
+		runningOps:      make(map[int]context.CancelFunc),
 	}
 }
 
@@ -110,322 +114,246 @@ func (uc *FileExplorerUseCase) ListFolderContents(
 	return response, nil
 }
 
-// CopyFiles copies files to target folder
-// 파일을 대상 폴더로 복사
+// fileOperationStep processes a single file of a background file operation.
+// It returns the file size in bytes and its name (best effort, zero values if unknown).
+type fileOperationStep func(ctx context.Context, fileID string) (size int64, name string, err error)
+
+// fileMetadataGetter provides file metadata (size, name) for progress reporting.
+type fileMetadataGetter interface {
+	GetFileMetadata(ctx context.Context, fileID string) (*entities.FileListItem, error)
+}
+
+// lookupFileInfo returns the size and name of a file, or zero values if unavailable.
+func lookupFileInfo(ctx context.Context, getter fileMetadataGetter, fileID string) (int64, string) {
+	if getter == nil {
+		return 0, ""
+	}
+	info, err := getter.GetFileMetadata(ctx, fileID)
+	if err != nil || info == nil {
+		return 0, ""
+	}
+	return info.Size, info.Name
+}
+
+// CopyFiles starts copying files to the target folder in the background.
+// Progress can be polled with GetOperationProgress and stopped with CancelOperation.
+// 파일을 대상 폴더로 복사 (백그라운드 실행)
 func (uc *FileExplorerUseCase) CopyFiles(
 	ctx context.Context,
 	request *entities.FileOperationRequest,
-) (*CopyFilesResponse, error) {
+) (*FileOperationStartedResponse, error) {
 	log.Printf("📋 파일 복사 시작: %d개 파일", len(request.FileIDs))
 
-	// Validate request
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
 
-	// Create operation record
+	driveAdapter, ok := uc.driveAdapter.(interface {
+		CopyFile(ctx context.Context, fileID, targetFolderID string) (string, error)
+		fileMetadataGetter
+	})
+	if !ok {
+		return nil, fmt.Errorf("storage provider does not support file copy")
+	}
+
+	step := func(ctx context.Context, fileID string) (int64, string, error) {
+		size, name := lookupFileInfo(ctx, driveAdapter, fileID)
+		newFileID, err := driveAdapter.CopyFile(ctx, fileID, request.TargetFolderID)
+		if err == nil {
+			log.Printf("✅ 파일 복사 완료: %s → %s", fileID, newFileID)
+		}
+		return size, name, err
+	}
+
 	operation := entities.NewFileOperation(
 		entities.OperationTypeCopy,
 		request.SourceFolderID,
 		request.TargetFolderID,
 		request.FileIDs,
 	)
-
-	if err := uc.operationRepo.Create(ctx, operation); err != nil {
-		return nil, fmt.Errorf("작업 기록 생성 실패: %w", err)
-	}
-
-	// Start operation
-	operation.Start()
-	if err := uc.operationRepo.Update(ctx, operation); err != nil {
-		log.Printf("⚠️  작업 시작 상태 업데이트 실패: %v", err)
-	}
-
-	// Type assert to access copy method
-	driveAdapter, ok := uc.driveAdapter.(interface {
-		CopyFile(ctx context.Context, fileID, targetFolderID string) (string, error)
-		GetFileMetadata(ctx context.Context, fileID string) (*entities.FileListItem, error)
-	})
-	if !ok {
-		operation.Fail("storage provider does not support file copy")
-		uc.operationRepo.Update(ctx, operation)
-		return nil, fmt.Errorf("storage provider does not support file copy")
-	}
-
-	// Copy files
-	results := make([]*services.CopyResult, 0, len(request.FileIDs))
-	successCount := 0
-
-	for i, fileID := range request.FileIDs {
-		// Get file metadata for size calculation
-		var fileSize int64
-		if fileInfo, err := driveAdapter.GetFileMetadata(ctx, fileID); err == nil {
-			fileSize = fileInfo.Size
-			operation.TotalBytes += fileSize
-		}
-
-		// Copy file
-		newFileID, err := driveAdapter.CopyFile(ctx, fileID, request.TargetFolderID)
-
-		result := &services.CopyResult{
-			OriginalFileID: fileID,
-			NewFileID:      newFileID,
-			Success:        err == nil,
-		}
-
-		if err != nil {
-			result.Error = err.Error()
-			operation.AddError(fileID, "", err.Error())
-			log.Printf("❌ 파일 복사 실패 (%s): %v", fileID, err)
-		} else {
-			successCount++
-			operation.ProcessedBytes += fileSize
-			log.Printf("✅ 파일 복사 완료: %s → %s", fileID, newFileID)
-		}
-
-		results = append(results, result)
-
-		// Update progress
-		operation.UpdateProgress(i+1, operation.ProcessedBytes)
-		if err := uc.operationRepo.UpdateProgress(ctx, operation.ID, operation.ProcessedFiles, operation.ProcessedBytes); err != nil {
-			log.Printf("⚠️  진행 상황 업데이트 실패: %v", err)
-		}
-	}
-
-	// Complete operation
-	if successCount == len(request.FileIDs) {
-		operation.Complete()
-	} else if successCount > 0 {
-		operation.Fail(fmt.Sprintf("%d/%d 파일 복사 성공", successCount, len(request.FileIDs)))
-	} else {
-		operation.Fail("모든 파일 복사 실패")
-	}
-
-	if err := uc.operationRepo.Update(ctx, operation); err != nil {
-		log.Printf("⚠️  작업 완료 상태 업데이트 실패: %v", err)
-	}
-
-	log.Printf("🎉 파일 복사 완료: %d/%d 성공", successCount, len(request.FileIDs))
-
-	return &CopyFilesResponse{
-		OperationID:  operation.ID,
-		Results:      results,
-		SuccessCount: successCount,
-		FailureCount: len(request.FileIDs) - successCount,
-	}, nil
+	return uc.startFileOperation(ctx, operation, "복사", step)
 }
 
-// MoveFiles moves files to target folder
-// 파일을 대상 폴더로 이동
+// MoveFiles starts moving files to the target folder in the background.
+// 파일을 대상 폴더로 이동 (백그라운드 실행)
 func (uc *FileExplorerUseCase) MoveFiles(
 	ctx context.Context,
 	request *entities.FileOperationRequest,
-) (*MoveFilesResponse, error) {
+) (*FileOperationStartedResponse, error) {
 	log.Printf("📦 파일 이동 시작: %d개 파일", len(request.FileIDs))
 
-	// Validate request
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
 
-	// Create operation record
+	driveAdapter, ok := uc.driveAdapter.(interface {
+		MoveFile(ctx context.Context, fileID, targetFolderID string) error
+		fileMetadataGetter
+	})
+	if !ok {
+		return nil, fmt.Errorf("storage provider does not support file move")
+	}
+
+	step := func(ctx context.Context, fileID string) (int64, string, error) {
+		size, name := lookupFileInfo(ctx, driveAdapter, fileID)
+		err := driveAdapter.MoveFile(ctx, fileID, request.TargetFolderID)
+		if err == nil {
+			log.Printf("✅ 파일 이동 완료: %s", fileID)
+		}
+		return size, name, err
+	}
+
 	operation := entities.NewFileOperation(
 		entities.OperationTypeMove,
 		request.SourceFolderID,
 		request.TargetFolderID,
 		request.FileIDs,
 	)
-
-	if err := uc.operationRepo.Create(ctx, operation); err != nil {
-		return nil, fmt.Errorf("작업 기록 생성 실패: %w", err)
-	}
-
-	// Start operation
-	operation.Start()
-	if err := uc.operationRepo.Update(ctx, operation); err != nil {
-		log.Printf("⚠️  작업 시작 상태 업데이트 실패: %v", err)
-	}
-
-	// Type assert to access move method
-	driveAdapter, ok := uc.driveAdapter.(interface {
-		MoveFile(ctx context.Context, fileID, targetFolderID string) error
-		GetFileMetadata(ctx context.Context, fileID string) (*entities.FileListItem, error)
-	})
-	if !ok {
-		operation.Fail("storage provider does not support file move")
-		uc.operationRepo.Update(ctx, operation)
-		return nil, fmt.Errorf("storage provider does not support file move")
-	}
-
-	// Move files
-	results := make([]*services.MoveResult, 0, len(request.FileIDs))
-	successCount := 0
-
-	for i, fileID := range request.FileIDs {
-		// Get file metadata
-		var fileName string
-		var fileSize int64
-		if fileInfo, err := driveAdapter.GetFileMetadata(ctx, fileID); err == nil {
-			fileName = fileInfo.Name
-			fileSize = fileInfo.Size
-			operation.TotalBytes += fileSize
-		}
-
-		// Move file
-		err := driveAdapter.MoveFile(ctx, fileID, request.TargetFolderID)
-
-		result := &services.MoveResult{
-			FileID:   fileID,
-			FileName: fileName,
-			Success:  err == nil,
-		}
-
-		if err != nil {
-			result.Error = err.Error()
-			operation.AddError(fileID, fileName, err.Error())
-			log.Printf("❌ 파일 이동 실패 (%s): %v", fileID, err)
-		} else {
-			successCount++
-			operation.ProcessedBytes += fileSize
-			log.Printf("✅ 파일 이동 완료: %s", fileID)
-		}
-
-		results = append(results, result)
-
-		// Update progress
-		operation.UpdateProgress(i+1, operation.ProcessedBytes)
-		if err := uc.operationRepo.UpdateProgress(ctx, operation.ID, operation.ProcessedFiles, operation.ProcessedBytes); err != nil {
-			log.Printf("⚠️  진행 상황 업데이트 실패: %v", err)
-		}
-	}
-
-	// Complete operation
-	if successCount == len(request.FileIDs) {
-		operation.Complete()
-	} else if successCount > 0 {
-		operation.Fail(fmt.Sprintf("%d/%d 파일 이동 성공", successCount, len(request.FileIDs)))
-	} else {
-		operation.Fail("모든 파일 이동 실패")
-	}
-
-	if err := uc.operationRepo.Update(ctx, operation); err != nil {
-		log.Printf("⚠️  작업 완료 상태 업데이트 실패: %v", err)
-	}
-
-	log.Printf("🎉 파일 이동 완료: %d/%d 성공", successCount, len(request.FileIDs))
-
-	return &MoveFilesResponse{
-		OperationID:  operation.ID,
-		Results:      results,
-		SuccessCount: successCount,
-		FailureCount: len(request.FileIDs) - successCount,
-	}, nil
+	return uc.startFileOperation(ctx, operation, "이동", step)
 }
 
-// DeleteFiles deletes files (permanent delete or move to trash)
-// 파일 삭제 (완전 삭제 또는 휴지통 이동)
+// DeleteFiles starts moving files to trash (or permanently deleting them) in the background.
+// 파일 삭제 (기본 휴지통 이동, permanentDelete 시 완전 삭제, 백그라운드 실행)
 func (uc *FileExplorerUseCase) DeleteFiles(
 	ctx context.Context,
 	fileIDs []string,
 	permanentDelete bool,
-) (*ExplorerDeleteFilesResponse, error) {
+) (*FileOperationStartedResponse, error) {
 	actionText := "휴지통 이동"
 	if permanentDelete {
 		actionText = "완전 삭제"
 	}
-	log.Printf("🗑️  파일 %s 시작: %d개 파일", actionText, len(fileIDs))
+	log.Printf("🗑️ 파일 %s 시작: %d개 파일", actionText, len(fileIDs))
 
 	if len(fileIDs) == 0 {
 		return nil, entities.ErrNoFilesSelected
 	}
 
-	// Create operation record
-	operation := entities.NewFileOperation(
-		entities.OperationTypeDelete,
-		"", // No source folder for delete
-		"", // No target folder for delete
-		fileIDs,
-	)
+	metadataGetter, _ := uc.driveAdapter.(fileMetadataGetter)
 
-	if err := uc.operationRepo.Create(ctx, operation); err != nil {
-		return nil, fmt.Errorf("작업 기록 생성 실패: %w", err)
-	}
-
-	// Start operation
-	operation.Start()
-	if err := uc.operationRepo.Update(ctx, operation); err != nil {
-		log.Printf("⚠️  작업 시작 상태 업데이트 실패: %v", err)
-	}
-
-	// Delete files using storage provider
-	results := make([]*services.DeleteResult, 0, len(fileIDs))
-	successCount := 0
-
-	for i, fileID := range fileIDs {
-		// Get file metadata first
-		var fileName string
-		driveAdapter, ok := uc.driveAdapter.(interface {
-			GetFileMetadata(ctx context.Context, fileID string) (*entities.FileListItem, error)
-		})
-		if ok {
-			if fileInfo, err := driveAdapter.GetFileMetadata(ctx, fileID); err == nil {
-				fileName = fileInfo.Name
-			}
-		}
-
-		// Delete file (permanent or trash)
+	step := func(ctx context.Context, fileID string) (int64, string, error) {
+		_, name := lookupFileInfo(ctx, metadataGetter, fileID)
 		var err error
 		if permanentDelete {
 			err = uc.storageProvider.DeleteFile(ctx, fileID)
 		} else {
 			err = uc.storageProvider.TrashFile(ctx, fileID)
 		}
+		if err == nil {
+			log.Printf("✅ 파일 %s 완료: %s", actionText, fileID)
+		}
+		return 0, name, err
+	}
 
-		result := &services.DeleteResult{
-			FileID:   fileID,
-			FileName: fileName,
-			Success:  err == nil,
+	operation := entities.NewFileOperation(entities.OperationTypeDelete, "", "", fileIDs)
+	return uc.startFileOperation(ctx, operation, actionText, step)
+}
+
+// startFileOperation records the operation and runs it in the background with a cancellable context.
+func (uc *FileExplorerUseCase) startFileOperation(
+	ctx context.Context,
+	operation *entities.FileOperation,
+	actionText string,
+	step fileOperationStep,
+) (*FileOperationStartedResponse, error) {
+	if err := uc.operationRepo.Create(ctx, operation); err != nil {
+		return nil, fmt.Errorf("작업 기록 생성 실패: %w", err)
+	}
+
+	operation.Start()
+	if err := uc.operationRepo.Update(ctx, operation); err != nil {
+		log.Printf("⚠️ 작업 시작 상태 업데이트 실패: %v", err)
+	}
+
+	// The request context ends with the HTTP request, so the work gets its own context
+	bgCtx, cancel := context.WithCancel(context.Background())
+	uc.mu.Lock()
+	uc.runningOps[operation.ID] = cancel
+	uc.mu.Unlock()
+
+	go uc.runFileOperation(bgCtx, operation, actionText, step)
+
+	return &FileOperationStartedResponse{
+		OperationID: operation.ID,
+		TotalFiles:  operation.TotalFiles,
+	}, nil
+}
+
+// runFileOperation processes the files one by one, stopping when the context is cancelled.
+// It is the only writer of the operation's final status.
+func (uc *FileExplorerUseCase) runFileOperation(
+	ctx context.Context,
+	operation *entities.FileOperation,
+	actionText string,
+	step fileOperationStep,
+) {
+	// Repository writes must not fail because the work context was cancelled
+	dbCtx := context.Background()
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("💥 파일 %s 중 패닉 발생: %v", actionText, r)
+			operation.Fail(fmt.Sprintf("패닉 발생: %v", r))
+			if err := uc.operationRepo.Update(dbCtx, operation); err != nil {
+				log.Printf("⚠️ 작업 상태 업데이트 실패: %v", err)
+			}
 		}
 
+		uc.mu.Lock()
+		if cancel, ok := uc.runningOps[operation.ID]; ok {
+			cancel()
+			delete(uc.runningOps, operation.ID)
+		}
+		uc.mu.Unlock()
+	}()
+
+	total := len(operation.FileIDs)
+	successCount := 0
+
+	for i, fileID := range operation.FileIDs {
+		if ctx.Err() != nil {
+			break
+		}
+
+		size, name, err := step(ctx, fileID)
+		operation.TotalBytes += size
+
 		if err != nil {
-			result.Error = err.Error()
-			operation.AddError(fileID, fileName, err.Error())
+			if ctx.Err() != nil {
+				// 취소로 중단된 파일은 오류로 기록하지 않음
+				break
+			}
+			operation.AddError(fileID, name, err.Error())
 			log.Printf("❌ 파일 %s 실패 (%s): %v", actionText, fileID, err)
 		} else {
 			successCount++
-			log.Printf("✅ 파일 %s 완료: %s", actionText, fileID)
+			operation.ProcessedBytes += size
 		}
 
-		results = append(results, result)
-
-		// Update progress
-		operation.UpdateProgress(i+1, 0)
-		if err := uc.operationRepo.UpdateProgress(ctx, operation.ID, operation.ProcessedFiles, 0); err != nil {
-			log.Printf("⚠️  진행 상황 업데이트 실패: %v", err)
+		operation.UpdateProgress(i+1, operation.ProcessedBytes)
+		if err := uc.operationRepo.UpdateProgress(dbCtx, operation.ID, operation.ProcessedFiles, operation.ProcessedBytes); err != nil {
+			log.Printf("⚠️ 진행 상황 업데이트 실패: %v", err)
 		}
 	}
 
-	// Complete operation
-	if successCount == len(fileIDs) {
+	switch {
+	case ctx.Err() != nil:
+		operation.Cancel()
+		log.Printf("🛑 파일 %s 취소됨: %d/%d 처리 후 중단 (성공 %d)", actionText, operation.ProcessedFiles, total, successCount)
+	case successCount == total:
 		operation.Complete()
-	} else if successCount > 0 {
-		operation.Fail(fmt.Sprintf("%d/%d 파일 %s 성공", successCount, len(fileIDs), actionText))
-	} else {
+		log.Printf("🎉 파일 %s 완료: %d/%d 성공", actionText, successCount, total)
+	case successCount > 0:
+		operation.Fail(fmt.Sprintf("%d/%d 파일 %s 성공", successCount, total, actionText))
+		log.Printf("⚠️ 파일 %s 일부 실패: %d/%d 성공", actionText, successCount, total)
+	default:
 		operation.Fail(fmt.Sprintf("모든 파일 %s 실패", actionText))
+		log.Printf("❌ 모든 파일 %s 실패", actionText)
 	}
 
-	if err := uc.operationRepo.Update(ctx, operation); err != nil {
-		log.Printf("⚠️  작업 완료 상태 업데이트 실패: %v", err)
+	if err := uc.operationRepo.Update(dbCtx, operation); err != nil {
+		log.Printf("⚠️ 작업 완료 상태 업데이트 실패: %v", err)
 	}
-
-	log.Printf("🎉 파일 %s 완료: %d/%d 성공", actionText, successCount, len(fileIDs))
-
-	return &ExplorerDeleteFilesResponse{
-		OperationID:  operation.ID,
-		Results:      results,
-		SuccessCount: successCount,
-		FailureCount: len(fileIDs) - successCount,
-	}, nil
 }
 
 // RenameFile renames a file
@@ -613,6 +541,18 @@ func (uc *FileExplorerUseCase) CancelOperation(
 		return entities.ErrOperationNotRunning
 	}
 
+	uc.mu.Lock()
+	cancel, running := uc.runningOps[operationID]
+	uc.mu.Unlock()
+
+	if running {
+		// The background goroutine stops after the current file and records the cancelled status
+		cancel()
+		log.Printf("✅ 작업 취소 요청 전달: ID=%d", operationID)
+		return nil
+	}
+
+	// Not running in this process (e.g. the server restarted): mark it cancelled directly
 	operation.Cancel()
 	if err := uc.operationRepo.Update(ctx, operation); err != nil {
 		return fmt.Errorf("작업 취소 상태 업데이트 실패: %w", err)
@@ -753,25 +693,11 @@ func (uc *FileExplorerUseCase) calculateFolderSizeRecursiveWithDepth(
 
 // Response types
 
-type CopyFilesResponse struct {
-	OperationID  int                    `json:"operationId"`
-	Results      []*services.CopyResult `json:"results"`
-	SuccessCount int                    `json:"successCount"`
-	FailureCount int                    `json:"failureCount"`
-}
-
-type MoveFilesResponse struct {
-	OperationID  int                    `json:"operationId"`
-	Results      []*services.MoveResult `json:"results"`
-	SuccessCount int                    `json:"successCount"`
-	FailureCount int                    `json:"failureCount"`
-}
-
-type ExplorerDeleteFilesResponse struct {
-	OperationID  int                      `json:"operationId"`
-	Results      []*services.DeleteResult `json:"results"`
-	SuccessCount int                      `json:"successCount"`
-	FailureCount int                      `json:"failureCount"`
+// FileOperationStartedResponse is returned when a background file operation (copy, move, delete) starts.
+// Per-file results are available through GetOperationProgress (errorDetails).
+type FileOperationStartedResponse struct {
+	OperationID int `json:"operationId"`
+	TotalFiles  int `json:"totalFiles"`
 }
 
 type FolderSizeInfo struct {

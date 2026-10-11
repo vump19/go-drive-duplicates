@@ -823,11 +823,23 @@ const ModalController = {
     },
 
     showOperationProgress(operationType, operationId) {
+        this.currentOperationLabel = operationType;
         const operationTypeElement = document.getElementById('operationType');
         operationTypeElement.innerHTML = `
             <i class="fas fa-spinner fa-spin"></i>
             <span>${operationType} in progress...</span>
         `;
+
+        // Reset state left over from a previous operation
+        document.getElementById('operationFilesProgress').textContent = '0 / 0';
+        document.getElementById('operationSizeProgress').textContent = '0 B / 0 B';
+        document.getElementById('operationProgressFill').style.width = '0%';
+        document.getElementById('operationProgressPercentage').textContent = '0%';
+        document.getElementById('operationDetails').innerHTML = '';
+        const cancelButton = document.getElementById('cancelOperation');
+        cancelButton.style.display = '';
+        cancelButton.disabled = false;
+        document.getElementById('closeOperationModal').style.display = 'none';
 
         this.openModal(this.operationModal);
 
@@ -859,11 +871,43 @@ const ModalController = {
         progressFill.style.width = `${percentage}%`;
         progressPercentage.textContent = `${Math.round(percentage)}%`;
 
-        // Show close button when complete
+        // Show final state and close button when the operation ends
         if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'cancelled') {
+            this.showOperationResult(progress);
             document.getElementById('cancelOperation').style.display = 'none';
             document.getElementById('closeOperationModal').style.display = 'block';
         }
+    },
+
+    showOperationResult(progress) {
+        const results = {
+            completed: { icon: 'fa-check-circle', text: '완료' },
+            failed: { icon: 'fa-exclamation-circle', text: '실패' },
+            cancelled: { icon: 'fa-ban', text: '취소됨' }
+        };
+        const result = results[progress.status];
+        const label = this.currentOperationLabel || '';
+        const operationTypeElement = document.getElementById('operationType');
+        operationTypeElement.innerHTML = `
+            <i class="fas ${result.icon}"></i>
+            <span>${label} ${result.text}</span>
+        `;
+
+        const details = [];
+        if (progress.errorMessage) {
+            details.push(progress.errorMessage);
+        }
+        (progress.errorDetails || []).forEach(error => {
+            details.push(`${error.fileName || error.fileId}: ${error.errorMessage}`);
+        });
+        const operationDetails = document.getElementById('operationDetails');
+        operationDetails.innerHTML = '';
+        details.forEach(message => {
+            const item = document.createElement('div');
+            item.className = 'detail-item error';
+            item.textContent = message;
+            operationDetails.appendChild(item);
+        });
     },
 
     showOperationError(message) {
