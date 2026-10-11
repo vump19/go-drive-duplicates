@@ -470,9 +470,37 @@ func (fs *fileService) ValidateFile(file *entities.File) error {
 	return nil
 }
 
+// EnrichFileMetadata refreshes the file's metadata with the latest values from the storage provider.
+// Path is computed locally and kept as is. A previously calculated hash is cleared when the file
+// content may have changed (size or modified time differs), so it gets recalculated.
 func (fs *fileService) EnrichFileMetadata(ctx context.Context, file *entities.File) error {
-	// For now, just return nil as we don't have GetFileMetadata method
-	// TODO: Implement when GetFileMetadata is available in storage provider
+	if file == nil || file.ID == "" {
+		return fmt.Errorf("file ID is required")
+	}
+
+	latest, err := fs.storageProvider.GetFile(ctx, file.ID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch file metadata: %w", err)
+	}
+
+	contentChanged := latest.Size != file.Size || !latest.ModifiedTime.Equal(file.ModifiedTime)
+
+	file.Name = latest.Name
+	file.Size = latest.Size
+	file.MimeType = latest.MimeType
+	file.ModifiedTime = latest.ModifiedTime
+	file.Parents = latest.Parents
+	file.WebViewLink = latest.WebViewLink
+
+	if latest.HashCalculated {
+		file.Hash = latest.Hash
+		file.HashCalculated = true
+	} else if contentChanged {
+		file.Hash = ""
+		file.HashCalculated = false
+	}
+
+	file.LastUpdated = time.Now()
 	return nil
 }
 
