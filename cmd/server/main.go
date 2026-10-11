@@ -11,7 +11,7 @@ import (
 const (
 	defaultConfigPath = "./config/app.yaml"
 	appName           = "Go Drive Duplicates"
-	appVersion        = "1.0.0"
+	appVersion        = "1.6.0"
 )
 
 func main() {

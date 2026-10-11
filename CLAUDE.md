@@ -61,7 +61,7 @@ rm drive_duplicates.db                          # 초기화
 
 ## 아키텍처
 
-현재 버전: **v1.4** (2026년 3월)
+현재 버전: **v1.6** (2026년 10월)
 
 ### 프로젝트 구조
 ```
@@ -87,6 +87,13 @@ rm drive_duplicates.db                          # 초기화
 | FolderAnalysisUseCase | `folder_analysis.go` | 폴더 분석, 빈 폴더 정리 |
 | FileExplorerUseCase | `file_explorer_usecase.go` | 듀얼 패널 탐색기 |
 | FolderDownloadUseCase | `folder_download.go` | 폴더 ZIP 다운로드 |
+| BatchArchiveUseCase | `batch_archive.go` | 여러 폴더 일괄 ZIP 아카이브 |
+| SmartOrganizerUseCase | `smart_organizer.go` | AI 기반 파일 정리 |
+| SharingManagerUseCase | `sharing_manager.go` | 공유 검색, 권한 일괄 변경 |
+| DocumentConsolidationUseCase | `document_consolidation.go` | 문서 통합 |
+| AudioConversionUseCase | `audio_conversion.go` | 오디오 형식 변환 |
+| FolderExportUseCase | `folder_export.go` | 폴더 내용 스프레드시트 내보내기 |
+| VerifiedDuplicateUseCase | `verified_duplicate_usecase.go` | 확인된 중복 그룹 관리 |
 
 ### 프론트엔드 페이지
 | 페이지 | 파일 | JS |
@@ -95,8 +102,12 @@ rm drive_duplicates.db                          # 초기화
 | 폴더 비교 | `compare.html` | `compare.js` |
 | 폴더 분석 | `folder-analysis.html` | `folder-analysis.js` |
 | 폴더 다운로드 | `folder-download.html` | `folder-download.js` |
-| 파일 탐색기 | `explorer.html` | `explorer-main.js`, `explorer-api.js` |
+| 파일 탐색기 | `explorer.html` | `explorer-main.js`, `explorer-ui.js`, `explorer-api.js` |
 | 일괄 아카이브 | `batch-archive.html` | `batch-archive.js` |
+| 스마트 정리 | `organizer.html` | `organizer.js` |
+| 공유 관리 | `sharing.html` | `sharing.js` |
+| 문서 통합 | `consolidate.html` | `consolidate.js` |
+| 오디오 변환 | `audio-convert.html` | `audio-convert.js` |
 
 ### UI 레이아웃
 어드민 스타일: 왼쪽 사이드바(다크) + 상단바 + 메인 콘텐츠. 각 페이지는 iframe으로 로드.

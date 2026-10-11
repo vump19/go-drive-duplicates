@@ -459,7 +459,7 @@ func (app *Application) handleHomePage(w http.ResponseWriter, r *http.Request) {
 <body>
     <div class="container">
         <h1>Go Drive Duplicates Finder</h1>
-        <p class="subtitle">Clean Architecture API Server v1.0.0</p>
+        <p class="subtitle">Clean Architecture API Server v1.6.0</p>
         
         <div class="section">
             <h2>Health Check</h2>
