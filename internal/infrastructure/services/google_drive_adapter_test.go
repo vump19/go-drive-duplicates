@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go-drive-duplicates/internal/domain/entities"
+
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 )
@@ -86,5 +88,64 @@ func TestUpdateFileMetadata_RequiresID(t *testing.T) {
 	adapter := &GoogleDriveAdapter{}
 	if err := adapter.UpdateFileMetadata(context.Background(), "", map[string]interface{}{"name": "a"}); err == nil {
 		t.Error("빈 ID에 오류가 반환되지 않음")
+	}
+}
+
+func TestDriveOrderBy(t *testing.T) {
+	tests := []struct {
+		sortBy, sortOrder, want string
+	}{
+		{"name", "asc", "name"},
+		{"name", "desc", "name desc"},
+		{"size", "asc", "quotaBytesUsed"},
+		{"modified", "desc", "modifiedTime desc"},
+		{"created", "asc", "createdTime"},
+		{"type", "desc", "folder,name"},
+		{"", "asc", ""},
+	}
+	for _, tt := range tests {
+		got := driveOrderBy(&entities.ListOptions{SortBy: tt.sortBy, SortOrder: tt.sortOrder})
+		if got != tt.want {
+			t.Errorf("driveOrderBy(%q, %q) = %q, 기대 = %q", tt.sortBy, tt.sortOrder, got, tt.want)
+		}
+	}
+}
+
+func TestListFolderContents_SendsDriveOrderBy(t *testing.T) {
+	var gotOrderBy string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotOrderBy = r.URL.Query().Get("orderBy")
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"files":[]}`))
+	}))
+	defer server.Close()
+
+	service, err := drive.NewService(context.Background(),
+		option.WithEndpoint(server.URL+"/"), option.WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("Drive 서비스 생성 실패: %v", err)
+	}
+	adapter := &GoogleDriveAdapter{service: service}
+
+	// 탐색기 화면의 정렬 옵션 값
+	tests := map[string]string{
+		"name":     "name",
+		"modified": "modifiedTime desc",
+		"size":     "quotaBytesUsed desc",
+		"type":     "folder,name",
+	}
+	for sortBy, want := range tests {
+		options := entities.DefaultListOptions()
+		options.SortBy = sortBy
+		if sortBy != "name" {
+			options.SortOrder = "desc"
+		}
+		if _, err := adapter.ListFolderContents(context.Background(), "folder1", options); err != nil {
+			t.Errorf("sortBy=%q: ListFolderContents 실패: %v", sortBy, err)
+			continue
+		}
+		if gotOrderBy != want {
+			t.Errorf("sortBy=%q: orderBy = %q, 기대 = %q", sortBy, gotOrderBy, want)
+		}
 	}
 }

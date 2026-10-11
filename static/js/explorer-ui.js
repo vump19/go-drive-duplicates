@@ -196,10 +196,10 @@ class PanelController {
                 case 'size':
                     comparison = a.size - b.size;
                     break;
-                case 'modifiedTime':
+                case 'modified':
                     comparison = new Date(a.modifiedTime) - new Date(b.modifiedTime);
                     break;
-                case 'mimeType':
+                case 'type':
                     comparison = a.mimeType.localeCompare(b.mimeType);
                     break;
                 default:

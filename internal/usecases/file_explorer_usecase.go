@@ -471,32 +471,28 @@ func (uc *FileExplorerUseCase) CreateFolder(
 		return nil, fmt.Errorf("parentFolderID and folderName are required")
 	}
 
-	// Type assert to access create folder method
-	type folderCreator interface {
-		CreateFolderReturningID(ctx context.Context, parentID, folderName string) (string, error)
-		GetFileMetadata(ctx context.Context, fileID string) (*entities.FileListItem, error)
-	}
-
-	driveAdapter, ok := uc.driveAdapter.(folderCreator)
-	if !ok {
-		return nil, fmt.Errorf("storage provider does not support folder creation")
-	}
-
 	// Create folder and get its ID
-	folderID, err := driveAdapter.CreateFolderReturningID(ctx, parentFolderID, folderName)
+	folderID, err := uc.storageProvider.CreateFolder(ctx, parentFolderID, folderName)
 	if err != nil {
 		return nil, fmt.Errorf("폴더 생성 실패: %w", err)
 	}
+	log.Printf("✅ 폴더 생성 완료: %s (%s)", folderName, folderID)
 
-	// Get complete folder metadata
-	folderItem, err := driveAdapter.GetFileMetadata(ctx, folderID)
-	if err != nil {
-		log.Printf("⚠️  폴더 메타데이터 조회 실패: %v", err)
-		// Return basic folder info
-		return entities.NewFileListItem(folderID, folderName, "application/vnd.google-apps.folder"), nil
+	basicItem := entities.NewFileListItem(folderID, folderName, "application/vnd.google-apps.folder")
+
+	// Get complete folder metadata if the provider supports it
+	metadataProvider, ok := uc.driveAdapter.(interface {
+		GetFileMetadata(ctx context.Context, fileID string) (*entities.FileListItem, error)
+	})
+	if !ok {
+		return basicItem, nil
 	}
 
-	log.Printf("✅ 폴더 생성 완료: %s (%s)", folderName, folderID)
+	folderItem, err := metadataProvider.GetFileMetadata(ctx, folderID)
+	if err != nil {
+		log.Printf("⚠️ 폴더 메타데이터 조회 실패, 기본 정보 반환: %v", err)
+		return basicItem, nil
+	}
 	return folderItem, nil
 }
 

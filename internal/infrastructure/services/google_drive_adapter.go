@@ -609,23 +609,7 @@ func (g *GoogleDriveAdapter) SearchFilesWithOptions(ctx context.Context, query s
 	}
 
 	// Apply sorting
-	if options.SortBy != "" {
-		orderBy := options.SortBy
-		if options.SortOrder == "desc" {
-			orderBy += " desc"
-		}
-		// Convert common field names to Google Drive API format
-		switch options.SortBy {
-		case "modifiedTime":
-			orderBy = "modifiedTime"
-		case "name":
-			orderBy = "name"
-		case "size":
-			orderBy = "quotaBytesUsed"
-		}
-		if options.SortOrder == "desc" {
-			orderBy += " desc"
-		}
+	if orderBy := driveOrderBy(options); orderBy != "" {
 		call = call.OrderBy(orderBy)
 	}
 
@@ -1182,6 +1166,32 @@ func flattenFolderTree(root *entities.FolderNode) []*entities.FolderNode {
 	return result
 }
 
+// driveOrderBy converts the domain sort criteria (ListOptions.SortBy) into a Google Drive orderBy value.
+// Drive cannot order by MIME type, so "type" orders folders first then by name; the page is
+// sorted by type on the client.
+func driveOrderBy(options *entities.ListOptions) string {
+	var field string
+	switch options.SortBy {
+	case "name":
+		field = "name"
+	case "size":
+		field = "quotaBytesUsed"
+	case "modified":
+		field = "modifiedTime"
+	case "created":
+		field = "createdTime"
+	case "type":
+		return "folder,name"
+	default:
+		return ""
+	}
+
+	if options.SortOrder == "desc" {
+		field += " desc"
+	}
+	return field
+}
+
 // ListFolderContents lists files and folders in a folder with advanced options
 // 폴더 내 파일 및 폴더 목록을 고급 옵션과 함께 조회
 func (g *GoogleDriveAdapter) ListFolderContents(ctx context.Context, folderID string, options *entities.ListOptions) (*entities.FileListResponse, error) {
@@ -1207,11 +1217,7 @@ func (g *GoogleDriveAdapter) ListFolderContents(ctx context.Context, folderID st
 	}
 
 	// Add ordering
-	if options.SortBy != "" {
-		orderBy := options.SortBy
-		if options.SortOrder == "desc" {
-			orderBy += " desc"
-		}
+	if orderBy := driveOrderBy(options); orderBy != "" {
 		call = call.OrderBy(orderBy)
 	}
 
