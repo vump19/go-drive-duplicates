@@ -63,7 +63,7 @@ class PanelController {
     attachEventListeners() {
         // Refresh and navigation
         this.refreshBtn.addEventListener('click', () => this.refresh());
-        this.homeBtn.addEventListener('click', () => this.navigateToFolder('root'));
+        this.homeBtn.addEventListener('click', () => this.navigateToFolder('root', []));
 
         // Select all
         this.selectAllCheckbox.addEventListener('change', (e) => this.toggleSelectAll(e.target.checked));
@@ -272,7 +272,7 @@ class PanelController {
         folderItem.appendChild(sizeBtn);
 
         // Navigate on click
-        folderItem.addEventListener('click', () => this.navigateToFolder(node.id, node.path));
+        folderItem.addEventListener('click', () => this.navigateToFolder(node.id, this.findTreePath(node.id)));
 
         container.appendChild(folderItem);
 
@@ -408,7 +408,8 @@ class PanelController {
 
             // Double-click to navigate into folder
             if (file.isFolder) {
-                row.addEventListener('dblclick', () => this.navigateToFolder(file.id, file.name));
+                row.addEventListener('dblclick', () => this.navigateToFolder(
+                    file.id, [...this.currentFolderPath, { id: file.id, name: file.name }]));
                 row.style.cursor = 'pointer';
             }
 
@@ -427,8 +428,11 @@ class PanelController {
 
     /**
      * Navigate to a folder
+     * @param {string} folderId - Folder ID ('root' for My Drive)
+     * @param {Array<{id: string, name: string}>|null} pathItems - Folders from below the root down to
+     *     this folder; null if unknown (looked up in the loaded tree, or shown as "… / name")
      */
-    async navigateToFolder(folderId, folderPath = null) {
+    async navigateToFolder(folderId, pathItems = null) {
         try {
             this.currentFolderId = folderId;
             this.currentPageToken = null;
@@ -436,7 +440,11 @@ class PanelController {
             this.selectedFiles.clear();
 
             // Update breadcrumb
-            this.updateBreadcrumb(folderId, folderPath);
+            this.currentFolderPath = folderId === 'root' ? [] : (pathItems || this.findTreePath(folderId) || null);
+            this.updateBreadcrumb();
+            if (!this.currentFolderPath) {
+                this.loadUnknownFolderPath(folderId);
+            }
 
             // Load contents
             await this.loadFolderContents();
@@ -456,30 +464,85 @@ class PanelController {
     }
 
     /**
-     * Update breadcrumb navigation
+     * Find the chain of folders from below the root to the given folder in the loaded tree
+     * @returns {Array<{id: string, name: string}>|null} Path items, or null if not in the tree
      */
-    updateBreadcrumb(folderId, folderPath) {
+    findTreePath(folderId) {
+        const search = (node, path) => {
+            if (node.id === folderId) {
+                return path;
+            }
+            for (const child of node.children || []) {
+                const found = search(child, [...path, { id: child.id, name: child.name }]);
+                if (found) {
+                    return found;
+                }
+            }
+            return null;
+        };
+        return this.folderTree ? search(this.folderTree, []) : null;
+    }
+
+    /**
+     * Show the name of a folder whose ancestors are unknown (e.g. opened from a URL) as "… / name"
+     */
+    async loadUnknownFolderPath(folderId) {
+        this.currentFolderPath = [{ id: folderId, name: '…', unknownAncestors: true }];
+        this.updateBreadcrumb();
+        try {
+            const info = await ExplorerAPI.getFileInfo(folderId);
+            if (this.currentFolderId === folderId && info && info.name) {
+                this.currentFolderPath = [{ id: folderId, name: info.name, unknownAncestors: true }];
+                this.updateBreadcrumb();
+            }
+        } catch (error) {
+            console.warn('폴더 이름 조회 실패:', error);
+        }
+    }
+
+    /**
+     * Update breadcrumb navigation from currentFolderPath
+     */
+    updateBreadcrumb() {
         this.breadcrumb.innerHTML = '';
+
+        const addSeparator = () => {
+            const separator = document.createElement('span');
+            separator.className = 'breadcrumb-separator';
+            separator.textContent = ' / ';
+            this.breadcrumb.appendChild(separator);
+        };
 
         // Root item
         const rootItem = document.createElement('span');
         rootItem.className = 'breadcrumb-item';
         rootItem.innerHTML = '<i class="fas fa-hard-drive"></i> My Drive';
-        rootItem.addEventListener('click', () => this.navigateToFolder('root'));
+        rootItem.addEventListener('click', () => this.navigateToFolder('root', []));
         this.breadcrumb.appendChild(rootItem);
 
-        // Current folder (if not root)
-        if (folderId !== 'root' && folderPath) {
-            const separator = document.createElement('span');
-            separator.className = 'breadcrumb-separator';
-            separator.textContent = ' / ';
-            this.breadcrumb.appendChild(separator);
+        const path = this.currentFolderPath || [];
+        path.forEach((folder, index) => {
+            if (folder.unknownAncestors) {
+                addSeparator();
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'breadcrumb-separator';
+                ellipsis.textContent = '…';
+                this.breadcrumb.appendChild(ellipsis);
+            }
+            addSeparator();
 
-            const currentItem = document.createElement('span');
-            currentItem.className = 'breadcrumb-item';
-            currentItem.textContent = folderPath;
-            this.breadcrumb.appendChild(currentItem);
-        }
+            const item = document.createElement('span');
+            item.className = 'breadcrumb-item';
+            item.textContent = folder.name;
+            item.title = folder.name;
+            // Earlier folders in the path are clickable; the current folder is not
+            if (index < path.length - 1) {
+                item.addEventListener('click', () => this.navigateToFolder(folder.id, path.slice(0, index + 1)));
+            } else {
+                item.classList.add('current');
+            }
+            this.breadcrumb.appendChild(item);
+        });
     }
 
     /**
@@ -870,6 +933,16 @@ const ModalController = {
         const percentage = progress.totalFiles > 0 ? (progress.processedFiles / progress.totalFiles) * 100 : 0;
         progressFill.style.width = `${percentage}%`;
         progressPercentage.textContent = `${Math.round(percentage)}%`;
+
+        // Show the file being processed while running
+        if (progress.status === 'in_progress' && progress.currentFileName) {
+            const operationDetails = document.getElementById('operationDetails');
+            operationDetails.innerHTML = '';
+            const item = document.createElement('div');
+            item.className = 'detail-item';
+            item.textContent = `처리 중: ${progress.currentFileName}`;
+            operationDetails.appendChild(item);
+        }
 
         // Show final state and close button when the operation ends
         if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'cancelled') {

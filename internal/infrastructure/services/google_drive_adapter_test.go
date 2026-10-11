@@ -155,6 +155,7 @@ func TestListFoldersRecursive_ReportsSubfoldersAtMaxDepth(t *testing.T) {
 	// root ─┬─ A ── A1
 	//       └─ B
 	subfolders := map[string][]string{"root": {"A", "B"}, "A": {"A1"}}
+	fileCountQueries := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -166,6 +167,9 @@ func TestListFoldersRecursive_ReportsSubfoldersAtMaxDepth(t *testing.T) {
 		}
 		// Files.List: only subfolder queries return results
 		q := r.URL.Query().Get("q")
+		if strings.Contains(q, "mimeType != 'application/vnd.google-apps.folder'") {
+			fileCountQueries++
+		}
 		var files []map[string]string
 		if strings.Contains(q, "mimeType = 'application/vnd.google-apps.folder'") {
 			for parent, children := range subfolders {
@@ -200,6 +204,10 @@ func TestListFoldersRecursive_ReportsSubfoldersAtMaxDepth(t *testing.T) {
 		t.Fatalf("노드 수 = %d, 기대 = 3 (root, A, B)", len(nodes))
 	}
 	// 최대 깊이에 있는 A는 하위 폴더가 있으므로 펼치기 토글이 표시되어야 함
+	// 화면에서 쓰지 않는 폴더별 파일 수 조회는 하지 않아야 함
+	if fileCountQueries != 0 {
+		t.Errorf("파일 수 조회 요청 %d회, 기대 = 0", fileCountQueries)
+	}
 	want := map[string]bool{"root": true, "A": true, "B": false}
 	for id, w := range want {
 		if hasChildren[id] != w {

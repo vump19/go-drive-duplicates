@@ -41,10 +41,12 @@ type FileOperation struct {
 	ProcessedBytes int64            `json:"processedBytes" db:"processed_bytes"`
 	ErrorMessage   string           `json:"errorMessage,omitempty" db:"error_message"`
 	ErrorDetails   []OperationError `json:"errorDetails,omitempty" db:"-"` // Not stored in DB
-	StartedAt      *time.Time       `json:"startedAt,omitempty" db:"started_at"`
-	CompletedAt    *time.Time       `json:"completedAt,omitempty" db:"completed_at"`
-	CreatedAt      time.Time        `json:"createdAt" db:"created_at"`
-	UpdatedAt      time.Time        `json:"updatedAt" db:"updated_at"`
+	// Name of the file being processed; only set while the operation runs in this process
+	CurrentFileName string     `json:"currentFileName,omitempty" db:"-"`
+	StartedAt       *time.Time `json:"startedAt,omitempty" db:"started_at"`
+	CompletedAt     *time.Time `json:"completedAt,omitempty" db:"completed_at"`
+	CreatedAt       time.Time  `json:"createdAt" db:"created_at"`
+	UpdatedAt       time.Time  `json:"updatedAt" db:"updated_at"`
 }
 
 // OperationError represents an error that occurred during operation

@@ -328,3 +328,29 @@ func TestDeleteFiles_TrashByDefault(t *testing.T) {
 		t.Errorf("휴지통 이동 %v, 완전 삭제 %v — 기본은 휴지통 이동이어야 함", mover.trashed, mover.deleted)
 	}
 }
+
+func TestGetOperationProgress_ShowsCurrentFileWhileRunning(t *testing.T) {
+	mover := &fakeFileMover{block: map[string]bool{"b": true}, started: make(chan string, 3)}
+	uc := NewFileExplorerUseCase(mover, newMemoryOperationRepo())
+
+	resp, err := uc.CopyFiles(context.Background(), copyRequest("a", "b"))
+	if err != nil {
+		t.Fatalf("CopyFiles 실패: %v", err)
+	}
+	<-mover.started
+	<-mover.started // b 처리 중
+
+	op, err := uc.GetOperationProgress(context.Background(), resp.OperationID)
+	if err != nil {
+		t.Fatalf("GetOperationProgress 실패: %v", err)
+	}
+	if op.CurrentFileName != "name-b" {
+		t.Errorf("CurrentFileName = %q, 기대 = name-b", op.CurrentFileName)
+	}
+
+	uc.CancelOperation(context.Background(), resp.OperationID)
+	op = waitForFinish(t, uc, resp.OperationID)
+	if op.CurrentFileName != "" {
+		t.Errorf("종료 후 CurrentFileName = %q, 기대 = 빈 값", op.CurrentFileName)
+	}
+}

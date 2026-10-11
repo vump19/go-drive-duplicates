@@ -647,7 +647,7 @@ function toggleDBMode() {
         [window.explorerApp.leftPanel, window.explorerApp.rightPanel].forEach(async panel => {
             try {
                 await panel.loadFolderTree();
-                await panel.navigateToFolder('root');
+                await panel.navigateToFolder('root', []);
             } catch (error) {
                 console.error('모드 전환 후 패널 로드 실패:', error);
             }

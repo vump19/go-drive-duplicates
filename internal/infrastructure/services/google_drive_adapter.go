@@ -1068,12 +1068,6 @@ func (g *GoogleDriveAdapter) buildFolderTree(ctx context.Context, folderID, pare
 		}
 	}
 
-	// Count files in this folder
-	fileCount, err := g.countFilesInFolder(ctx, folderID)
-	if err == nil {
-		node.FileCount = fileCount
-	}
-
 	// List subfolders with pagination to get all folders
 	query := fmt.Sprintf("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", folderID)
 
@@ -1141,40 +1135,6 @@ func (g *GoogleDriveAdapter) hasAnyFile(ctx context.Context, query string) (bool
 		return false, err
 	}
 	return len(fileList.Files) > 0, nil
-}
-
-// countFilesInFolder counts number of files (not folders) in a folder
-func (g *GoogleDriveAdapter) countFilesInFolder(ctx context.Context, folderID string) (int, error) {
-	query := fmt.Sprintf("'%s' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false", folderID)
-
-	count := 0
-	pageToken := ""
-
-	for {
-		call := g.service.Files.List().
-			Q(query).
-			Fields("nextPageToken").
-			PageSize(1000).
-			Context(ctx)
-
-		if pageToken != "" {
-			call = call.PageToken(pageToken)
-		}
-
-		fileList, err := call.Do()
-		if err != nil {
-			return 0, err
-		}
-
-		count += len(fileList.Files)
-
-		pageToken = fileList.NextPageToken
-		if pageToken == "" {
-			break
-		}
-	}
-
-	return count, nil
 }
 
 // flattenFolderTree converts tree structure to flat list

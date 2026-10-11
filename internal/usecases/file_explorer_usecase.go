@@ -20,6 +20,8 @@ type FileExplorerUseCase struct {
 
 	// Cancel functions of file operations running in this process, by operation ID
 	runningOps map[int]context.CancelFunc
+	// Name of the file each running operation is processing, by operation ID
+	currentFiles map[int]string
 }
 
 // NewFileExplorerUseCase creates a new file explorer use case
@@ -32,6 +34,7 @@ func NewFileExplorerUseCase(
 		operationRepo:   operationRepo,
 		driveAdapter:    storageProvider, // Cast to specific adapter if needed
 		runningOps:      make(map[int]context.CancelFunc),
+		currentFiles:    make(map[int]string),
 	}
 }
 
@@ -115,8 +118,7 @@ func (uc *FileExplorerUseCase) ListFolderContents(
 }
 
 // fileOperationStep processes a single file of a background file operation.
-// It returns the file size in bytes and its name (best effort, zero values if unknown).
-type fileOperationStep func(ctx context.Context, fileID string) (size int64, name string, err error)
+type fileOperationStep func(ctx context.Context, fileID string) error
 
 // fileMetadataGetter provides file metadata (size, name) for progress reporting.
 type fileMetadataGetter interface {
@@ -156,13 +158,12 @@ func (uc *FileExplorerUseCase) CopyFiles(
 		return nil, fmt.Errorf("storage provider does not support file copy")
 	}
 
-	step := func(ctx context.Context, fileID string) (int64, string, error) {
-		size, name := lookupFileInfo(ctx, driveAdapter, fileID)
+	step := func(ctx context.Context, fileID string) error {
 		newFileID, err := driveAdapter.CopyFile(ctx, fileID, request.TargetFolderID)
 		if err == nil {
 			log.Printf("✅ 파일 복사 완료: %s → %s", fileID, newFileID)
 		}
-		return size, name, err
+		return err
 	}
 
 	operation := entities.NewFileOperation(
@@ -171,7 +172,7 @@ func (uc *FileExplorerUseCase) CopyFiles(
 		request.TargetFolderID,
 		request.FileIDs,
 	)
-	return uc.startFileOperation(ctx, operation, "복사", step)
+	return uc.startFileOperation(ctx, operation, "복사", driveAdapter, step)
 }
 
 // MoveFiles starts moving files to the target folder in the background.
@@ -194,13 +195,12 @@ func (uc *FileExplorerUseCase) MoveFiles(
 		return nil, fmt.Errorf("storage provider does not support file move")
 	}
 
-	step := func(ctx context.Context, fileID string) (int64, string, error) {
-		size, name := lookupFileInfo(ctx, driveAdapter, fileID)
+	step := func(ctx context.Context, fileID string) error {
 		err := driveAdapter.MoveFile(ctx, fileID, request.TargetFolderID)
 		if err == nil {
 			log.Printf("✅ 파일 이동 완료: %s", fileID)
 		}
-		return size, name, err
+		return err
 	}
 
 	operation := entities.NewFileOperation(
@@ -209,7 +209,7 @@ func (uc *FileExplorerUseCase) MoveFiles(
 		request.TargetFolderID,
 		request.FileIDs,
 	)
-	return uc.startFileOperation(ctx, operation, "이동", step)
+	return uc.startFileOperation(ctx, operation, "이동", driveAdapter, step)
 }
 
 // DeleteFiles starts moving files to trash (or permanently deleting them) in the background.
@@ -231,8 +231,7 @@ func (uc *FileExplorerUseCase) DeleteFiles(
 
 	metadataGetter, _ := uc.driveAdapter.(fileMetadataGetter)
 
-	step := func(ctx context.Context, fileID string) (int64, string, error) {
-		_, name := lookupFileInfo(ctx, metadataGetter, fileID)
+	step := func(ctx context.Context, fileID string) error {
 		var err error
 		if permanentDelete {
 			err = uc.storageProvider.DeleteFile(ctx, fileID)
@@ -242,11 +241,21 @@ func (uc *FileExplorerUseCase) DeleteFiles(
 		if err == nil {
 			log.Printf("✅ 파일 %s 완료: %s", actionText, fileID)
 		}
-		return 0, name, err
+		return err
 	}
 
 	operation := entities.NewFileOperation(entities.OperationTypeDelete, "", "", fileIDs)
-	return uc.startFileOperation(ctx, operation, actionText, step)
+	return uc.startFileOperation(ctx, operation, actionText, metadataGetter, step)
+}
+
+// setCurrentFile records which file a running operation is processing (name, or ID if unknown).
+func (uc *FileExplorerUseCase) setCurrentFile(operationID int, name, fileID string) {
+	if name == "" {
+		name = fileID
+	}
+	uc.mu.Lock()
+	uc.currentFiles[operationID] = name
+	uc.mu.Unlock()
 }
 
 // startFileOperation records the operation and runs it in the background with a cancellable context.
@@ -254,6 +263,7 @@ func (uc *FileExplorerUseCase) startFileOperation(
 	ctx context.Context,
 	operation *entities.FileOperation,
 	actionText string,
+	metadataGetter fileMetadataGetter,
 	step fileOperationStep,
 ) (*FileOperationStartedResponse, error) {
 	if err := uc.operationRepo.Create(ctx, operation); err != nil {
@@ -271,7 +281,7 @@ func (uc *FileExplorerUseCase) startFileOperation(
 	uc.runningOps[operation.ID] = cancel
 	uc.mu.Unlock()
 
-	go uc.runFileOperation(bgCtx, operation, actionText, step)
+	go uc.runFileOperation(bgCtx, operation, actionText, metadataGetter, step)
 
 	return &FileOperationStartedResponse{
 		OperationID: operation.ID,
@@ -285,6 +295,7 @@ func (uc *FileExplorerUseCase) runFileOperation(
 	ctx context.Context,
 	operation *entities.FileOperation,
 	actionText string,
+	metadataGetter fileMetadataGetter,
 	step fileOperationStep,
 ) {
 	// Repository writes must not fail because the work context was cancelled
@@ -304,6 +315,7 @@ func (uc *FileExplorerUseCase) runFileOperation(
 			cancel()
 			delete(uc.runningOps, operation.ID)
 		}
+		delete(uc.currentFiles, operation.ID)
 		uc.mu.Unlock()
 	}()
 
@@ -315,7 +327,10 @@ func (uc *FileExplorerUseCase) runFileOperation(
 			break
 		}
 
-		size, name, err := step(ctx, fileID)
+		size, name := lookupFileInfo(ctx, metadataGetter, fileID)
+		uc.setCurrentFile(operation.ID, name, fileID)
+
+		err := step(ctx, fileID)
 		operation.TotalBytes += size
 
 		if err != nil {
@@ -519,6 +534,12 @@ func (uc *FileExplorerUseCase) GetOperationProgress(
 	operation, err := uc.operationRepo.GetByID(ctx, operationID)
 	if err != nil {
 		return nil, fmt.Errorf("작업 조회 실패: %w", err)
+	}
+
+	if operation.IsRunning() {
+		uc.mu.Lock()
+		operation.CurrentFileName = uc.currentFiles[operationID]
+		uc.mu.Unlock()
 	}
 
 	return operation, nil

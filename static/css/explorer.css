@@ -186,6 +186,15 @@ body {
     color: #5865f2;
 }
 
+.breadcrumb-item.current {
+    cursor: default;
+    font-weight: 600;
+}
+
+.breadcrumb-item.current:hover {
+    background-color: transparent;
+}
+
 .breadcrumb-separator {
     color: #6c757d;
 }
