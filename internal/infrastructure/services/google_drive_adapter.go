@@ -803,10 +803,113 @@ func (g *GoogleDriveAdapter) GetFileParents(ctx context.Context, fileID string) 
 	return file.Parents, nil
 }
 
+// UpdateFileMetadata updates editable metadata of a file.
+// Supported keys: "name" (non-empty string), "description" (string), "starred" (bool),
+// "properties" and "appProperties" (string-valued maps, merged into existing values).
+// Trashing and moving are not supported here; use TrashFile and MoveFile instead.
 func (g *GoogleDriveAdapter) UpdateFileMetadata(ctx context.Context, fileID string, metadata map[string]interface{}) error {
-	// This would require implementing Google Drive file update API
-	// For now, return not implemented
-	return fmt.Errorf("metadata update not implemented")
+	if fileID == "" {
+		return fmt.Errorf("file ID is required")
+	}
+
+	update, err := buildMetadataUpdate(metadata)
+	if err != nil {
+		return err
+	}
+
+	// 재시도 로직 적용
+	for attempt := 0; attempt <= g.maxRetries; attempt++ {
+		_, err = g.service.Files.Update(fileID, update).
+			Fields("id").
+			Context(ctx).Do()
+		if err == nil {
+			break
+		}
+
+		if isRetryableError(err) && attempt < g.maxRetries {
+			waitTime := time.Duration(1<<uint(attempt)) * time.Second
+			log.Printf("⚠️ Google Drive API 일시적 오류 (UpdateFileMetadata, 시도 %d/%d), %v 후 재시도: %v",
+				attempt+1, g.maxRetries+1, waitTime, err)
+			time.Sleep(waitTime)
+			continue
+		}
+		break
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to update file metadata: %w", err)
+	}
+
+	log.Printf("✅ 파일 메타데이터 업데이트 완료: %s", fileID)
+	return nil
+}
+
+// buildMetadataUpdate converts a metadata map into a Drive update request body.
+func buildMetadataUpdate(metadata map[string]interface{}) (*drive.File, error) {
+	if len(metadata) == 0 {
+		return nil, fmt.Errorf("no metadata to update")
+	}
+
+	update := &drive.File{}
+	for key, value := range metadata {
+		switch key {
+		case "name":
+			name, ok := value.(string)
+			if !ok || strings.TrimSpace(name) == "" {
+				return nil, fmt.Errorf("metadata %q must be a non-empty string", key)
+			}
+			update.Name = name
+		case "description":
+			description, ok := value.(string)
+			if !ok {
+				return nil, fmt.Errorf("metadata %q must be a string", key)
+			}
+			update.Description = description
+			// Send empty string too, so the description can be cleared
+			update.ForceSendFields = append(update.ForceSendFields, "Description")
+		case "starred":
+			starred, ok := value.(bool)
+			if !ok {
+				return nil, fmt.Errorf("metadata %q must be a boolean", key)
+			}
+			update.Starred = starred
+			// Send false too, so the star can be removed
+			update.ForceSendFields = append(update.ForceSendFields, "Starred")
+		case "properties", "appProperties":
+			props, err := toStringMap(value)
+			if err != nil {
+				return nil, fmt.Errorf("metadata %q: %w", key, err)
+			}
+			if key == "properties" {
+				update.Properties = props
+			} else {
+				update.AppProperties = props
+			}
+		default:
+			return nil, fmt.Errorf("unsupported metadata key %q (supported: name, description, starred, properties, appProperties)", key)
+		}
+	}
+	return update, nil
+}
+
+// toStringMap converts a map with string values (as decoded from JSON or built in Go) to map[string]string.
+func toStringMap(value interface{}) (map[string]string, error) {
+	switch m := value.(type) {
+	case map[string]string:
+		return m, nil
+	case map[string]interface{}:
+		result := make(map[string]string, len(m))
+		for k, v := range m {
+			str, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("value of %q must be a string", k)
+			}
+			result[k] = str
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("must be a map of strings")
+	}
 }
 
 func (g *GoogleDriveAdapter) GetQuota(ctx context.Context) (used, total int64, err error) {
